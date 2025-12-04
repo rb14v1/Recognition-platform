@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { TextField, Button, Card, CardContent, IconButton, InputAdornment } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+// import Header from "../components/Header";
+// import Footer from "../components/Footer";
 import { authAPI } from "../api/auth"; // Import the new API service
 import { useNavigate } from "react-router-dom";
 
@@ -42,7 +42,7 @@ function Register() {
 
   return (
     <div className="h-screen flex flex-col bg-[#f3f6f9]">
-      <Header />
+      {/* <Header /> */}
       <div className="flex-grow flex items-center justify-center mt-14">
         <Card sx={{ width: 420, borderRadius: "20px", paddingY: 2, paddingX: 3, boxShadow: "0px 12px 30px rgba(0,0,0,0.12)", border: "1px solid #00D1C9", background: "white" }}>
           <CardContent>
@@ -69,7 +69,7 @@ function Register() {
           </CardContent>
         </Card>
       </div>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }
