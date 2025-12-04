@@ -77,4 +77,26 @@ class User(AbstractUser):
             return False, "You cannot modify the role of someone who outranks you or is your peer."
  
         return True, "Allowed"
+
+class Nomination(models.Model):
+    nominator = models.ForeignKey(
+        'User', 
+        on_delete=models.CASCADE, 
+        related_name='nominations_made'
+    )
+    nominee = models.ForeignKey(
+        'User', 
+        on_delete=models.CASCADE, 
+        related_name='nominations_received'
+    )
+    reason = models.TextField(blank=True, null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # This constraint ensures a user can only nominate ONE person total.
+        # If they try to nominate again, the DB will throw an error.
+        unique_together = ('nominator',) 
+
+    def __str__(self):
+        return f"{self.nominator.username} -> {self.nominee.username}"    
  

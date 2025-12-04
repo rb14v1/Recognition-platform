@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import Nomination
  
 User = get_user_model()
  
@@ -29,3 +30,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         # These are the fields your Frontend Context needs
         fields = ['id', 'username', 'email', 'role', 'employee_id', 'employee_dept', 'employee_role']
+        
+class UserNominationListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role']
+
+# 2. For the "Action" of nominating
+class NominationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Nomination
+        fields = ['nominee', 'reason']
+
+    def create(self, validated_data):
+        # We automatically set the 'nominator' to the logged-in user
+        validated_data['nominator'] = self.context['request'].user
+        return super().create(validated_data)        
