@@ -29,4 +29,8 @@ export const authAPI = {
     promote: async (data: PromotePayload) => {
         return await api.post('promote/', data);
     },
+
+    getMe: async () => {
+        return await api.get('me/');
+    }
 };

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { TextField, Button, Card, CardContent, IconButton, InputAdornment } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-// import Header from "../components/Header";
-// import Footer from "../components/Footer";
 import { authAPI } from "../api/auth"; // Import the new API service
 import { useNavigate } from "react-router-dom";
 
@@ -69,7 +67,6 @@ function Register() {
           </CardContent>
         </Card>
       </div>
-      {/* <Footer /> */}
     </div>
   );
 }

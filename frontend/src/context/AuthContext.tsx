@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect} from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authAPI } from '../api/auth';
 import { jwtDecode } from "jwt-decode";
@@ -8,7 +8,7 @@ interface DecodedToken {
     user_id: number;
     username: string;
     role?: string;
-    exp: number; 
+    exp: number;
 }
 
 interface User {
@@ -33,20 +33,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    // Helper to fetch user data from Backend
+    const fetchUser = async () => {
+        try {
+            const res = await authAPI.getMe();
+            setUser(res.data); // This sets the REAL DB data
+        } catch (error) {
+            console.error("Failed to fetch user", error);
+            logout(); // Token is likely invalid
+        }
+    };
+
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
         if (token) {
             try {
-                const decoded = jwtDecode<DecodedToken>(token);
-                // Check if token is expired
+                const decoded: any = jwtDecode(token);
                 if (decoded.exp * 1000 < Date.now()) {
                     logout();
                 } else {
-                    setUser({ 
-                        user_id: decoded.user_id, 
+                    // 1. Set basic info from token immediately (fast UI)
+                    setUser({
+                        user_id: decoded.user_id,
                         username: decoded.username,
-                        role: decoded.role 
-                    }); 
+                        role: decoded.role
+                    });
+                    // 2. Then fetch full details from DB (accurate UI)
+                    fetchUser();
                 }
             } catch (e) {
                 logout();
@@ -57,21 +70,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const login = async (formData: any) => {
         const res = await authAPI.login(formData);
-        const { access, refresh } = res.data; 
-        
+        const { access, refresh } = res.data;
+
         localStorage.setItem('accessToken', access);
         localStorage.setItem('refreshToken', refresh);
 
-        const decoded = jwtDecode<DecodedToken>(access);
-        setUser({ 
-            user_id: decoded.user_id, 
-            username: decoded.username,
-            role: decoded.role
-        });
+        // Fetch real user details immediately after login
+        await fetchUser();
 
-        navigate('/dashboard'); 
+        navigate('/dashboard');
     };
-
     const register = async (formData: any) => {
         // Just pass through to API, let component handle redirect/toast on success
         await authAPI.register(formData);

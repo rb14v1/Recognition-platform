@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, PromoteUserView
+from .views import RegisterView, PromoteUserView,UserProfileView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -14,4 +14,5 @@ urlpatterns = [
     
     # The promotion logic
     path('promote/', PromoteUserView.as_view(), name='promote_user'),
+    path('me/', UserProfileView.as_view(), name='user_profile'),
 ]
