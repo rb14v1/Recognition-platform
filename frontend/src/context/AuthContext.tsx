@@ -4,13 +4,6 @@ import { authAPI } from '../api/auth';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
 
-interface DecodedToken {
-    user_id: number;
-    username: string;
-    role?: string;
-    exp: number;
-}
-
 interface User {
     user_id: number;
     username: string;
