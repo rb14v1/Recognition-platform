@@ -48,15 +48,30 @@ class User(AbstractUser):
         """Returns integer level of current user's role"""
         return self.ROLE_HIERARCHY.get(self.role, 1)
 
-    def can_promote(self, new_role_string):
+    def can_promote(self, target_user, new_role_string):
         """
-        Check if this user has authority to promote someone to new_role.
-        Rule: You cannot promote someone to a level >= your own.
+        Security Checks:
+        1. Requestor cannot promote someone to a level higher than themselves.
+        2. Requestor cannot modify someone who is ALREADY higher/equal to themselves.
+        3. Requestor cannot modify themselves.
         """
-        target_level = self.ROLE_HIERARCHY.get(new_role_string)
-        
-        # If role doesn't exist, we can't promote
-        if target_level is None:
-            return False
-            
-        return self.get_role_level() > target_level
+        # 0. Self-check
+        if self.id == target_user.id:
+            return False, "You cannot change your own role."
+
+        my_level = self.get_role_level()
+        target_current_level = target_user.get_role_level()
+        new_role_level = self.ROLE_HIERARCHY.get(new_role_string)
+
+        if new_role_level is None:
+            return False, "Invalid role."
+
+        # 1. The "Ambition" Check (Cannot create a god)
+        if new_role_level >= my_level:
+            return False, "You cannot promote someone to a level equal to or higher than your own."
+
+        # 2. The "Mutiny" Check (Cannot touch your boss)
+        if target_current_level >= my_level:
+            return False, "You cannot modify the role of someone who outranks you or is your peer."
+
+        return True, "Allowed"
