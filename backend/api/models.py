@@ -39,7 +39,13 @@ class User(AbstractUser):
     employee_role = models.CharField(max_length=50, blank=True, null=True)
     manager_name = models.CharField(max_length=100, blank=True, null=True, help_text="Reporting Manager")
     email = models.EmailField(unique=True)
- 
+    manager = models.ForeignKey(
+        'self', 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL, 
+        related_name='team_members'
+    )
     objects = CustomUserManager()
     REQUIRED_FIELDS = ['email', 'employee_id']
  
@@ -90,7 +96,14 @@ class Nomination(models.Model):
         on_delete=models.CASCADE, 
         related_name='nominations_received'
     )
+    
+    STATUS_CHOICES = [
+        ('SUBMITTED', 'Submitted'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
         # New fields you want:
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUBMITTED')
     nominator_name = models.CharField(max_length=100, blank=True, null=True)
     nominee_name = models.CharField(max_length=100, blank=True, null=True)
 

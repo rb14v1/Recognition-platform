@@ -1,115 +1,133 @@
-import { Card, CardContent, Avatar, Typography, Chip, Button } from "@mui/material";
-import { Edit, Delete } from "@mui/icons-material";
+import { useEffect, useState } from "react";
+import { Card, CardContent, Typography, Button, Chip } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import HowToVoteIcon from "@mui/icons-material/HowToVote";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import { authAPI } from "../../api/auth";
+import { useAuth } from "../../context/AuthContext"; // Import Context
 
-interface EmployeeCardProps {
-  emp: any;
-  isSelected?: boolean;
-  onClick?: () => void;
-  onEdit?: (e: React.MouseEvent) => void;
-  onRemove?: (e: React.MouseEvent) => void;
-}
+const EmployeeDashboard = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth(); // Get user info
+  const [receivedCount, setReceivedCount] = useState<number | null>(null);
+  const [showStatus, setShowStatus] = useState(false);
 
-const EmployeeCard = ({ emp, isSelected = false, onClick, onEdit, onRemove }: EmployeeCardProps) => {
-  if (!emp) return null;
+  useEffect(() => {
+    const fetchStatus = async () => {
+        try {
+            const res = await authAPI.getNominationStatus();
+            setReceivedCount(res.data.nominations_received_count);
+        } catch (e) {
+            console.error("Failed to load status");
+        }
+    };
+    fetchStatus();
+  }, []);
 
   return (
-    <Card 
-        onClick={onClick}
-        className={`relative transition-all border group h-full flex flex-col justify-between
-            ${isSelected 
-              ? "w-full max-w-md border-teal-500 ring-2 ring-teal-50 shadow-xl cursor-default bg-white" 
-              : "hover:shadow-lg cursor-pointer border-gray-100 bg-white"
-            }
-        `}
-        sx={{ borderRadius: 3, overflow: 'visible' }}
-    >
-        <CardContent className="p-5">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-                 <div className="flex items-center gap-3">
-                    <Avatar 
-                        sx={{ 
-                            width: 56, height: 56, 
-                            bgcolor: isSelected ? '#00A8A8' : '#f1f5f9', 
-                            color: isSelected ? 'white' : '#475569', fontWeight: 'bold' 
-                        }}
-                    >
-                        {emp.username?.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <div>
-                        <Typography variant="h6" fontWeight="bold" className="text-gray-900 leading-tight">
-                            {emp.username}
-                        </Typography>
-                        <Chip 
-                            label={emp.employee_role || emp.role || "Employee"} 
-                            size="small" 
-                            className="mt-1"
-                            sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#e2e8f0', color: '#475569', fontWeight: 700 }} 
-                        />
-                    </div>
-                 </div>
-                 {isSelected && <Chip label="Selected" sx={{ bgcolor: "#e0f2f1", color: "#00695c", fontWeight: "bold" }} size="small" />}
-            </div>
+    <div className="min-h-screen bg-gray-50/50 p-6">
+      
+      {/* HEADER */}
+      <div className="mb-10 animate-fadeIn">
+        <Typography variant="h4" className="font-bold text-gray-900 mb-1 tracking-tight">
+          {user?.role === 'COORDINATOR' ? "Coordinator Workspace" : "Employee Workspace"}
+        </Typography>
+        <Typography variant="body1" className="text-gray-500">
+          Welcome back, {user?.username}.
+        </Typography>
+      </div>
 
-            {/* Info Grid */}
-            <div className="space-y-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-xs text-gray-400 font-bold uppercase">ID</span>
-                    <span className="font-medium text-gray-800">{emp.employee_id || "N/A"}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-xs text-gray-400 font-bold uppercase">Job Title</span>
-                    <span className="font-medium text-gray-800">{emp.employee_role || "N/A"}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-xs text-gray-400 font-bold uppercase">Department</span>
-                    <span className="font-medium text-gray-800">{emp.employee_dept || "General"}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-xs text-gray-400 font-bold uppercase">Manager</span>
-                    <span className="font-medium text-gray-800">{emp.manager_name || "-"}</span>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl">
+        
+        {/* CARD 1: MAKE A NOMINATION */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="p-3 bg-teal-50 rounded-xl mb-4 text-teal-600">
+              <EmojiEventsIcon fontSize="large" />
             </div>
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              Nominate a Colleague
+            </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Recognize a peer for their hard work.
+            </Typography>
+            <Button 
+              variant="contained" 
+              fullWidth
+              onClick={() => navigate("/dashboard/nominate")}
+              sx={{ borderRadius: 3, bgcolor: "#00A8A8", textTransform: "none", py: 1 }}
+            >
+              Go to Nomination
+            </Button>
+          </CardContent>
+        </Card>
 
-            {/* Buttons - Now clearly visible */}
-            {isSelected && onEdit && onRemove && (
-                <div className="flex gap-3 mt-5 pt-2 border-t border-gray-100 animate-fadeIn">
-                    <Button 
-                        fullWidth 
-                        variant="outlined" 
-                        startIcon={<Edit />} 
-                        onClick={onEdit} 
-                        sx={{ 
-                            borderRadius: 2, 
-                            textTransform: 'none', 
-                            color: '#00A8A8', 
-                            borderColor: '#00A8A8',
-                            fontWeight: 600,
-                            "&:hover": { backgroundColor: "#e0f2f1", borderColor: "#008f8f" }
-                        }}
-                    >
-                        Edit Reason
-                    </Button>
-                    <Button 
-                        fullWidth 
-                        variant="outlined" 
-                        color="error" 
-                        startIcon={<Delete />} 
-                        onClick={onRemove} 
-                        sx={{ 
-                            borderRadius: 2, 
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            "&:hover": { backgroundColor: "#fee2e2" }
-                        }}
-                    >
-                        Remove
-                    </Button>
+        {/* CARD 2: MY STATUS */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="p-3 bg-blue-50 rounded-xl mb-4 text-blue-600">
+              <CampaignIcon fontSize="large" />
+            </div>
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              My Nominations
+            </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Check if peers have nominated you.
+            </Typography>
+            
+            {!showStatus ? (
+                <Button 
+                    variant="outlined" 
+                    fullWidth
+                    onClick={() => setShowStatus(true)}
+                    sx={{ borderRadius: 3, textTransform: "none", py: 1, borderColor: '#e2e8f0', color: '#64748b' }}
+                >
+                    Reveal My Status
+                </Button>
+            ) : (
+                <div className="w-full bg-blue-50 border border-blue-100 rounded-xl p-3 text-center animate-fadeIn">
+                    <Typography variant="h3" fontWeight="bold" className="text-blue-600 my-1">
+                        {receivedCount}
+                    </Typography>
+                    <Typography variant="caption" className="text-blue-500 uppercase tracking-wider font-bold">
+                        Nominations Received
+                    </Typography>
                 </div>
             )}
-        </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+
+        {/* CARD 3: VOTING */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)", opacity: 0.7 }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="flex justify-between w-full mb-4">
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+                    <HowToVoteIcon fontSize="large" />
+                </div>
+                <Chip label="Locked" size="small" />
+            </div>
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              Final Voting
+            </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Voting phase is currently closed.
+            </Typography>
+            <Button disabled variant="outlined" fullWidth sx={{ borderRadius: 3 }}>
+              Closed
+            </Button>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      <div className="mt-12 flex items-center gap-2 text-xs text-gray-400">
+        <VerifiedIcon fontSize="small" />
+        <span>Authenticated as {user?.role || "User"}</span>
+      </div>
+    </div>
   );
 };
 
-export default EmployeeCard;
+export default EmployeeDashboard;

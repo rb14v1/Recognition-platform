@@ -33,6 +33,9 @@ export const authAPI = {
     promote: async (data: PromotePayload) => {
         return await api.post('promote/', data);
     },
+    getPromotableUsers: async (search: string = "") => {
+        return await api.get(`coordinator/promote-list/?search=${search}`);
+    },
 
     getMe: async () => {
         return await api.get('me/');
@@ -65,5 +68,32 @@ export const authAPI = {
 
     getNominationStatus: async () => {
         return await api.get('nominate/status/');
+    },
+    getMyTeam: async () => {
+        return await api.get('coordinator/team/');
+    },
+    
+    // Search unassigned employees to add to team
+    searchUnassigned: async (query: string, type: 'name' | 'id') => {
+        return await api.get(`coordinator/team/add/?search=${query}&type=${type}`);
+    },
+
+    // Link selected employees to the current coordinator
+    linkEmployeesToTeam: async (userIds: number[]) => {
+        return await api.post('coordinator/team/add/', { user_ids: userIds });
+    },
+
+    // Update member details or promote
+    updateTeamMember: async (id: number, data: any) => {
+        return await api.put(`coordinator/team/${id}/`, data);
+    },
+    
+    // Approvals
+    getPendingNominations: async () => {
+        return await api.get('coordinator/nominations/');
+    },
+    
+    reviewNomination: async (data: { nomination_id: number, action: 'APPROVE' | 'REJECT' }) => {
+        return await api.post('coordinator/nominations/', data);
     }
 };

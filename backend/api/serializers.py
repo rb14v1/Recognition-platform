@@ -80,3 +80,8 @@ class NominationSerializer(serializers.ModelSerializer):
         validated_data['nominee_name'] = nominee_display if nominee_display else nominee.username
 
         return super().create(validated_data)
+    
+class TeamMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'employee_id', 'employee_dept', 'employee_role', 'role']    
