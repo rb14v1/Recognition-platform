@@ -40,9 +40,17 @@ class UserNominationListSerializer(serializers.ModelSerializer):
 class NominationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomination
-        fields = ['nominee', 'reason']
+        fields = ['nominee', 'reason','nominator_name','nominee_name']  # frontend sends only these two
 
     def create(self, validated_data):
-        # We automatically set the 'nominator' to the logged-in user
-        validated_data['nominator'] = self.context['request'].user
-        return super().create(validated_data)        
+        request = self.context['request']
+        nominator = request.user
+        nominee = validated_data['nominee']
+
+        # Auto-fill names from User model
+        validated_data['nominator'] = nominator
+        validated_data['nominator_name'] = f"{nominator.first_name} {nominator.last_name}".strip()
+        validated_data['nominee_name'] = f"{nominee.first_name} {nominee.last_name}".strip()
+
+        return super().create(validated_data)
+     

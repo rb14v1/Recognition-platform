@@ -89,6 +89,10 @@ class Nomination(models.Model):
         on_delete=models.CASCADE, 
         related_name='nominations_received'
     )
+        # New fields you want:
+    nominator_name = models.CharField(max_length=100, blank=True, null=True)
+    nominee_name = models.CharField(max_length=100, blank=True, null=True)
+
     reason = models.TextField(blank=True, null=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
