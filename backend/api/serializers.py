@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
 from .models import Nomination
  
@@ -9,7 +11,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
  
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'employee_id','employee_dept','employee_role']
+        fields = ['username', 'email', 'password', 'employee_id','employee_dept','employee_role','manager_name']
         # Note: 'role' is excluded so they can't set it themselves.
  
     def create(self, validated_data):
@@ -24,6 +26,27 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             role=User.EMPLOYEE # Force default
         )
         return user
+    
+class CustomLoginSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        username = attrs.get("username")
+        password = attrs.get("password")
+
+        # 1. Check if the username even exists
+        user_exists = User.objects.filter(username=username).exists()
+        if not user_exists:
+            # APT REASON #1
+            raise AuthenticationFailed({"detail": "This username does not exist."})
+
+        # 2. If username exists, let standard logic check the password
+        try:
+            data = super().validate(attrs)
+        except AuthenticationFailed:
+            # APT REASON #2
+            # If we are here, username exists but password failed
+            raise AuthenticationFailed({"detail": "Incorrect password. Please try again."})
+            
+        return data    
  
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,17 +63,20 @@ class UserNominationListSerializer(serializers.ModelSerializer):
 class NominationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomination
-        fields = ['nominee', 'reason','nominator_name','nominee_name']  # frontend sends only these two
+        fields = ['nominee', 'reason', 'nominator_name', 'nominee_name']  
 
     def create(self, validated_data):
         request = self.context['request']
         nominator = request.user
         nominee = validated_data['nominee']
 
-        # Auto-fill names from User model
         validated_data['nominator'] = nominator
-        validated_data['nominator_name'] = f"{nominator.first_name} {nominator.last_name}".strip()
-        validated_data['nominee_name'] = f"{nominee.first_name} {nominee.last_name}".strip()
+        
+        # FIX: Use username if first_name is empty
+        nominator_display = f"{nominator.first_name} {nominator.last_name}".strip()
+        validated_data['nominator_name'] = nominator_display if nominator_display else nominator.username
+
+        nominee_display = f"{nominee.first_name} {nominee.last_name}".strip()
+        validated_data['nominee_name'] = nominee_display if nominee_display else nominee.username
 
         return super().create(validated_data)
-     

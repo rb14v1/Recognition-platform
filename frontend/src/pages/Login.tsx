@@ -108,7 +108,7 @@ function Login() {
                   "&:hover": { backgroundColor: "#008f8f" }
               }}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Logging in..." : "Log In"}
             </Button>
 
             <div className="text-center mt-4">

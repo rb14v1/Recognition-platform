@@ -1,13 +1,18 @@
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import permissions, status
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from django.db.models import Q # Needed for search logic
+from datetime import timedelta
+from django.utils import timezone
 from .serializers import (
     UserRegistrationSerializer, 
     UserProfileSerializer, 
     UserNominationListSerializer, 
-    NominationSerializer
+    NominationSerializer,
+    CustomLoginSerializer
 )
 from .models import Nomination
 
@@ -18,6 +23,9 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
     serializer_class = UserRegistrationSerializer
 
+class CustomLoginView(TokenObtainPairView):
+    serializer_class = CustomLoginSerializer
+    
 class PromoteUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -97,3 +105,81 @@ class CreateNominationView(APIView):
             return Response({"message": "Nomination submitted successfully!"}, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
+
+class NominationStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Check if I have nominated anyone
+        my_nomination = Nomination.objects.filter(nominator=user).first()
+        
+        # 2. Check if I have received nominations (Count only, for anonymity)
+        received_count = Nomination.objects.filter(nominee=user).count()
+        nominee_data = None
+        current_reason = None
+        if my_nomination:
+            nominee_data = UserNominationListSerializer(my_nomination.nominee).data
+            current_reason = my_nomination.reason
+
+        return Response({
+            "has_nominated": my_nomination is not None,
+            "nominee": nominee_data,
+            "nominee_name": my_nomination.nominee.username if my_nomination else None,
+            "reason": current_reason,
+            "nominee_id": my_nomination.nominee.id if my_nomination else None,
+            "nomination_date": my_nomination.submitted_at if my_nomination else None,
+            "nominations_received_count": received_count
+        })    
+
+EDIT_WINDOW_DAYS = 2
+
+class ManageNominationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_my_nomination(self, user):
+        return Nomination.objects.filter(nominator=user).first()
+
+    # 1. SUBMIT (Create)
+    def post(self, request):
+        if Nomination.objects.filter(nominator=request.user).exists():
+            return Response({"error": "You have already nominated someone."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = NominationSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Nomination submitted successfully!"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # 2. UPDATE (Edit Reason or Nominee)
+    def put(self, request):
+        nomination = self.get_my_nomination(request.user)
+        if not nomination:
+            return Response({"error": "No nomination found to edit."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Time Check
+        time_elapsed = timezone.now() - nomination.submitted_at
+        if time_elapsed > timedelta(days=EDIT_WINDOW_DAYS):
+            return Response({"error": "The editing window for this nomination has closed."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Update logic
+        serializer = NominationSerializer(nomination, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Nomination updated successfully!"})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # 3. DELETE (Withdraw)
+    def delete(self, request):
+        nomination = self.get_my_nomination(request.user)
+        if not nomination:
+            return Response({"error": "No nomination found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Time Check
+        time_elapsed = timezone.now() - nomination.submitted_at
+        if time_elapsed > timedelta(days=EDIT_WINDOW_DAYS):
+            return Response({"error": "Cannot delete. The time window has closed."}, status=status.HTTP_403_FORBIDDEN)
+
+        nomination.delete()
+        return Response({"message": "Nomination withdrawn successfully."})        

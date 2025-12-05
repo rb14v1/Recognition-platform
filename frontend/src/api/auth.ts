@@ -19,6 +19,10 @@ interface PromotePayload {
     new_role: string;
 }
 
+export interface NominationPayload {
+    nominee: number; // ID of the user being nominated
+    reason: string;
+}
 export const authAPI = {
     register: async (data: RegisterPayload) => {
         return await api.post('register/', data);
@@ -32,5 +36,34 @@ export const authAPI = {
 
     getMe: async () => {
         return await api.get('me/');
+    },
+
+    getNominationOptions: async (filters?: { search?: string, dept?: string, role?: string }) => {
+        // Build query string dynamically
+        const params = new URLSearchParams();
+        if (filters?.search) params.append('search', filters.search);
+        if (filters?.dept) params.append('dept', filters.dept);
+        if (filters?.role) params.append('role', filters.role);
+        
+        return await api.get(`nominate/list/?${params.toString()}`);
+    },
+
+    // 1. Submit New
+    submitNomination: async (data: NominationPayload) => {
+        return await api.post('nominate/action/', data);
+    },
+    
+    // 2. Update Existing
+    updateNomination: async (data: NominationPayload) => {
+        return await api.put('nominate/action/', data);
+    },
+    
+    // 3. Delete Existing
+    withdrawNomination: async () => {
+        return await api.delete('nominate/action/');
+    },
+
+    getNominationStatus: async () => {
+        return await api.get('nominate/status/');
     }
 };

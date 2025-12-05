@@ -1,181 +1,135 @@
-import { Card, CardContent, Typography, Button, Divider } from "@mui/material";
+// src/pages/dashboards/EmployeeDashboard.tsx
+import { useEffect, useState } from "react";
+import { Card, CardContent, Typography, Button, Chip } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import ChecklistIcon from "@mui/icons-material/Checklist";
+import HowToVoteIcon from "@mui/icons-material/HowToVote";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import CampaignIcon from "@mui/icons-material/Campaign"; // Icon for nominations received
+import { authAPI } from "../../api/auth";
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
+  const [receivedCount, setReceivedCount] = useState<number | null>(null);
+  const [showStatus, setShowStatus] = useState(false); // Toggle to show count
+
+  // Fetch status on load
+  useEffect(() => {
+    const fetchStatus = async () => {
+        try {
+            const res = await authAPI.getNominationStatus();
+            setReceivedCount(res.data.nominations_received_count);
+        } catch (e) {
+            console.error("Failed to load status");
+        }
+    };
+    fetchStatus();
+  }, []);
 
   return (
-    <div className="px-10 py-8 bg-[#F2F6F8] min-h-screen">
-
+    <div className="min-h-screen bg-gray-50/50 p-6 md:p-10">
+      
       {/* HEADER */}
-      <div className="mb-10">
-        <Typography
-          variant="h4"
-          className="font-extrabold text-gray-900 tracking-wide"
-          style={{ fontFamily: "Inter, sans-serif" }}
-        >
-          Employee Dashboard
+      <div className="mb-10 animate-fadeIn">
+        <Typography variant="h4" className="font-bold text-gray-900 mb-1 tracking-tight">
+          Employee Workspace
         </Typography>
-
-        <Typography
-          variant="body1"
-          className="text-gray-600 mt-2 max-w-xl leading-relaxed"
-          style={{ fontFamily: "Inter, sans-serif" }}
-        >
-          Recognize efforts, celebrate achievements, and track your nomination
-          activity within the organization.
+        <Typography variant="body1" className="text-gray-500">
+          Welcome to the Recognition Portal.
         </Typography>
       </div>
 
-      {/* GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-
-        {/* ===================== NOMINATION CARD ===================== */}
-        <Card
-          sx={{
-            borderRadius: "22px",
-            padding: "6px",
-            backgroundColor: "#ffffff",
-
-            boxShadow:
-              "0 8px 25px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)",
-            transition: "all 0.25s ease-in-out",
-            display: "flex",
-            flexDirection: "column",
-            "&:hover": {
-              transform: "translateY(-6px)",
-              boxShadow:
-                "0 14px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)",
-            },
-          }}
-        >
-          <CardContent className="p-10 flex flex-col h-full">
-
-            {/* ICON + TITLE */}
-            <div className="flex items-center gap-3 mb-3">
-              <EmojiEventsIcon sx={{ fontSize: 40, color: "#008C8C" }} />
-              <Typography
-                variant="h5"
-                className="font-semibold text-gray-800"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                Nominate a Colleague
-              </Typography>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl">
+        
+        {/* CARD 1: MAKE A NOMINATION */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="p-3 bg-teal-50 rounded-xl mb-4 text-teal-600">
+              <EmojiEventsIcon fontSize="large" />
             </div>
-
-            {/* DESCRIPTION */}
-            <Typography
-              variant="body1"
-              className="text-gray-600 leading-relaxed mb-10 flex-grow"
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
-              Show appreciation for outstanding contributions. Each cycle allows you
-              to nominate <strong>one member</strong>.
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              Nominate a Colleague
             </Typography>
-
-            {/* BUTTON */}
-            <div className="flex">
-              <Button
-                variant="contained"
-                sx={{
-                  backgroundColor: "#008C8C",
-                  borderRadius: "30px",
-                  paddingX: "32px",
-                  paddingY: "12px",
-                  fontSize: "16px",
-                  textTransform: "none",
-                  fontFamily: "Inter, sans-serif",
-                  boxShadow: "0 4px 10px rgba(0, 140, 140, 0.3)",
-                  "&:hover": {
-                    backgroundColor: "#007373",
-                    boxShadow: "0 6px 14px rgba(0, 115, 115, 0.35)",
-                  },
-                }}
-                onClick={() => navigate("/dashboard/nominate")}
-              >
-                Start Nomination
-              </Button>
-            </div>
-
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Recognize a peer for their hard work.
+            </Typography>
+            <Button 
+              variant="contained" 
+              fullWidth
+              onClick={() => navigate("/dashboard/nominate")}
+              sx={{ borderRadius: 3, bgcolor: "#00A8A8", textTransform: "none", py: 1 }}
+            >
+              Go to Nomination
+            </Button>
           </CardContent>
         </Card>
 
-        {/* ===================== VOTING CARD ===================== */}
-        <Card
-          sx={{
-            borderRadius: "22px",
-            padding: "6px",
-            backgroundColor: "#ffffff",
-
-            boxShadow:
-              "0 8px 25px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)",
-            transition: "all 0.25s ease-in-out",
-            display: "flex",
-            flexDirection: "column",
-            "&:hover": {
-              transform: "translateY(-6px)",
-              boxShadow:
-                "0 14px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)",
-            },
-          }}
-        >
-          <CardContent className="p-10 flex flex-col h-full">
-
-            {/* HEADER */}
-            <div className="flex items-center gap-3 mb-3">
-              <ChecklistIcon sx={{ fontSize: 40, color: "#008C8C" }} />
-              <Typography
-                variant="h5"
-                className="font-semibold text-gray-800"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                Voting
-              </Typography>
+        {/* CARD 2: MY STATUS (Received Nominations) */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="p-3 bg-blue-50 rounded-xl mb-4 text-blue-600">
+              <CampaignIcon fontSize="large" />
             </div>
-
-            <Divider className="my-4" />
-
-            {/* DESCRIPTION */}
-            <Typography
-              variant="body1"
-              className="text-gray-600 leading-relaxed mb-10 flex-grow"
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
-              Voting is now open! Review the nominees and cast your vote for the person
-              you feel deserves recognition this cycle.
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              My Nominations
             </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Check if peers have nominated you for an award.
+            </Typography>
+            
+            {!showStatus ? (
+                <Button 
+                    variant="outlined" 
+                    fullWidth
+                    onClick={() => setShowStatus(true)}
+                    sx={{ borderRadius: 3, textTransform: "none", py: 1, borderColor: '#e2e8f0', color: '#64748b' }}
+                >
+                    Reveal My Status
+                </Button>
+            ) : (
+                <div className="w-full bg-blue-50 border border-blue-100 rounded-xl p-3 text-center animate-fadeIn">
+                    <Typography variant="body2" className="text-blue-800 font-medium">
+                        You have received
+                    </Typography>
+                    <Typography variant="h3" fontWeight="bold" className="text-blue-600 my-1">
+                        {receivedCount}
+                    </Typography>
+                    <Typography variant="caption" className="text-blue-500 uppercase tracking-wider font-bold">
+                        Nominations
+                    </Typography>
+                    {/* Note: We intentionally do NOT show who nominated them, as requested */}
+                </div>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* BUTTON */}
-            <div className="flex">
-              <Button
-                variant="contained"
-                sx={{
-                  backgroundColor: "#008C8C",
-                  borderRadius: "30px",
-                  paddingX: "32px",
-                  paddingY: "12px",
-                  fontSize: "16px",
-                  textTransform: "none",
-                  fontFamily: "Inter, sans-serif",
-                  boxShadow: "0 4px 10px rgba(0, 140, 140, 0.3)",
-                  "&:hover": {
-                    backgroundColor: "#007373",
-                    boxShadow: "0 6px 14px rgba(0, 115, 115, 0.35)",
-                  },
-                }}
-                onClick={() => navigate("/dashboard/vote")}
-              >
-                Vote Now
-              </Button>
+        {/* CARD 3: VOTING (Future) */}
+        <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.05)", opacity: 0.7 }}>
+          <CardContent className="p-6 flex flex-col h-full items-start">
+            <div className="flex justify-between w-full mb-4">
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+                    <HowToVoteIcon fontSize="large" />
+                </div>
+                <Chip label="Locked" size="small" />
             </div>
-
+            <Typography variant="h6" fontWeight="bold" className="mb-2 text-gray-800">
+              Final Voting
+            </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6 flex-grow">
+              Voting phase is currently closed.
+            </Typography>
+            <Button disabled variant="outlined" fullWidth sx={{ borderRadius: 3 }}>
+              Closed
+            </Button>
           </CardContent>
         </Card>
 
       </div>
 
+      <div className="mt-12 flex items-center gap-2 text-xs text-gray-400">
+        <VerifiedIcon fontSize="small" />
+        <span>Authenticated as Employee</span>
+      </div>
     </div>
   );
 };

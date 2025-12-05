@@ -1,283 +1,331 @@
-// src/pages/Nominate.tsx
 import { useState, useEffect } from "react";
 import {
-  Card,
-  CardContent,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
-  Button,
-  Collapse,
-  IconButton,
-  Divider,
+  TextField, Select, MenuItem, Typography, Button, 
+  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, 
+  InputAdornment, FormControl, InputLabel, IconButton, Avatar
 } from "@mui/material";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import api from "../api/axiosInstance";
-
-const API_BASE = import.meta.env.VITE_API_URL; // ✅ Use .env
+import { Search, Warning, Close } from "@mui/icons-material";
+import { authAPI } from "../api/auth";
+import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
+import EmployeeCard from "../components/EmployeeCard"; 
 
 const Nominate = () => {
+  const navigate = useNavigate();
+
+  // --- Data States ---
   const [employees, setEmployees] = useState<any[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [selectedDept, setSelectedDept] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // --- Status States ---
+  const [hasNominated, setHasNominated] = useState(false);
+  const [mySelection, setMySelection] = useState<any | null>(null);
+  const [savedReason, setSavedReason] = useState(""); // NEW: Store the existing reason
+
+  // --- Filter States ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deptFilter, setDeptFilter] = useState("All");
+  const [roleFilter, setRoleFilter] = useState("All");
+
+  // --- Action States ---
+  const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [reason, setReason] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // --- Dialogs ---
+  const [nominateDialogOpen, setNominateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">("create");
 
- const token = localStorage.getItem("accessToken");
+  // 1. Initial Data Fetch
+  useEffect(() => {
+    loadPageData();
+  }, []);
 
-
-  // ------------------------------
-  // Fetch Employees from Backend
-  // ------------------------------
-  const fetchEmployees = async () => {
+  const loadPageData = async () => {
+    setLoading(true);
     try {
-      const params = new URLSearchParams();
+      const [statusRes, listRes] = await Promise.all([
+        authAPI.getNominationStatus(),
+        authAPI.getNominationOptions()
+      ]);
 
-      if (searchText) params.append("search", searchText);
-      if (selectedDept) params.append("dept", selectedDept);
-      if (selectedRole) params.append("role", selectedRole);
+      setHasNominated(statusRes.data.has_nominated);
+      setMySelection(statusRes.data.nominee);
+      setSavedReason(statusRes.data.reason || ""); // Capture the reason from backend
+      setEmployees(listRes.data);
 
-      const response = await fetch(
-        `${API_BASE}nominate/list/?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("API error:", response.status);
-        return;
-      }
-
-      const data = await response.json();
-      setEmployees(data);
     } catch (error) {
-      console.error("Error fetching employees:", error);
+      console.error(error);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [searchText, selectedDept, selectedRole]);
+  // 2. Filter Logic
+  const departments = ["All", ...new Set(employees.map(e => e.employee_dept).filter(Boolean))];
+  const roles = ["All", ...new Set(employees.map(e => e.employee_role).filter(Boolean))]; 
 
-  // ------------------------------
-  // Extract Dynamic Department List
-  // ------------------------------
-  const departmentList = [
-    ...new Set(employees.map((emp) => emp.employee_dept)),
-  ];
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.username.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = deptFilter === "All" || emp.employee_dept === deptFilter;
+    const matchesRole = roleFilter === "All" || emp.employee_role === roleFilter;
+    return matchesSearch && matchesDept && matchesRole;
+  });
 
-  // ------------------------------
-  // Extract Dynamic Role List
-  // ------------------------------
-  const roleList =
-    selectedDept.length > 0
-      ? [
-          ...new Set(
-            employees
-              .filter((emp) => emp.employee_dept === selectedDept)
-              .map((emp) => emp.employee_role)
-          ),
-        ]
-      : [];
+  // 3. Handlers
+  const handleCardClick = (emp: any) => {
+    if (hasNominated) return; 
+    setSelectedEmp(emp);
+    setMode("create");
+    setReason(""); 
+    setNominateDialogOpen(true);
+  };
 
-  // ------------------------------
-  // Submit Nomination
-  // ------------------------------
-  const submitNomination = async () => {
-  if (!selectedEmployee || !reason.trim()) return;
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedEmp(mySelection);
+    setMode("edit");
+    
+    // FIX: Pre-fill the reason with the saved one!
+    setReason(savedReason); 
+    
+    setNominateDialogOpen(true);
+  };
 
-  try {
-    const response = await api.post("nominate/submit/", {
-      nominee: selectedEmployee.id,
-      reason: reason,
-    });
+  const handleRemoveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteDialogOpen(true);
+  };
 
-    alert("Nomination submitted successfully!");
-    setSelectedEmployee(null);
-    setReason("");
+  const handleSubmit = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    try {
+      if (mode === 'create') {
+          await authAPI.submitNomination({ nominee: selectedEmp.id, reason });
+          toast.success("Nomination Submitted!");
+      } else {
+          await authAPI.updateNomination({ nominee: selectedEmp.id, reason });
+          toast.success("Nomination Updated!");
+      }
+      setNominateDialogOpen(false);
+      loadPageData(); 
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Action failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  } catch (error: any) {
-    console.error("Nomination Error:", error);
-    alert(error.response?.data?.error || "Something went wrong");
-  }
-};
-
+  const handleConfirmDelete = async () => {
+    setSubmitting(true);
+    try {
+        await authAPI.withdrawNomination();
+        toast.success("Nomination removed.");
+        setHasNominated(false);
+        setMySelection(null);
+        setSavedReason(""); // Clear saved reason
+        setDeleteDialogOpen(false);
+        loadPageData();
+    } catch (err: any) {
+        toast.error(err.response?.data?.error || "Failed to remove");
+    } finally {
+        setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center min-h-screen py-10 px-4">
-      <Card
-        sx={{
-          width: "100%",
-          maxWidth: 650,
-          borderRadius: "18px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
-        }}
-      >
-        <CardContent>
-          {/* HEADER */}
-          <div className="flex justify-between items-center mb-5">
-            <Typography
-              variant="h5"
-              fontWeight="bold"
-              className="text-gray-800"
-            >
-              Nominate a Colleague
-            </Typography>
+    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
+      
+      <div className="max-w-7xl mx-auto mb-8">
+        <Typography variant="h5" fontWeight="800" className="text-gray-900 tracking-tight">
+             {hasNominated ? "Your Selection" : "Nominate a Peer"}
+        </Typography>
+        <Typography variant="body2" className="text-gray-500 mt-1">
+            {hasNominated 
+                ? "You have nominated the following colleague. You can edit or remove this selection." 
+                : "Select a deserving peer below and tell us why they stand out."}
+        </Typography>
 
-            {/* FILTER BUTTON */}
-            <IconButton
-              onClick={() => setShowFilters(!showFilters)}
-              sx={{
-                border: "1px solid #ccc",
-                borderRadius: "10px",
-                padding: "6px 10px",
-              }}
-            >
-              <FilterListIcon />
-              <span className="ml-2 text-sm font-medium">Filters</span>
-            </IconButton>
-          </div>
-
-          {/* SEARCH BAR */}
-          <TextField
-            label="Search employee..."
-            fullWidth
-            variant="outlined"
-            size="medium"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            sx={{ mb: 3 }}
-          />
-
-          {/* FILTER PANEL */}
-          <Collapse in={showFilters}>
-            <div className="bg-gray-50 p-4 rounded-lg border mb-3">
-
-              {/* DEPARTMENT FILTER */}
-              <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-                <InputLabel>Department</InputLabel>
-                <Select
-                  value={selectedDept}
-                  label="Department"
-                  onChange={(e) => {
-                    setSelectedDept(e.target.value);
-                    setSelectedRole("");
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>All Departments</em>
-                  </MenuItem>
-
-                  {departmentList.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* ROLE FILTER */}
-              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                <InputLabel>Role</InputLabel>
-                <Select
-                  value={selectedRole}
-                  label="Role"
-                  disabled={!selectedDept}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  <MenuItem value="">
-                    <em>All Roles</em>
-                  </MenuItem>
-
-                  {roleList.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {role}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </div>
-          </Collapse>
-
-          <Divider className="my-4" />
-
-          {/* EMPLOYEE LIST */}
-          <Typography variant="subtitle1" fontWeight="bold" className="mb-2">
-            Select Employee:
-          </Typography>
-
-          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto mb-4 bg-white">
-            {employees.map((emp) => (
-              <div
-                key={emp.id}
-                onClick={() => setSelectedEmployee(emp)}
-                className={`p-3 rounded cursor-pointer mb-2 transition-all ${
-                  selectedEmployee?.id === emp.id
-                    ? "bg-teal-100 border border-teal-300 shadow-sm"
-                    : "hover:bg-gray-100"
-                }`}
-              >
-                <div className="font-semibold">{emp.username}</div>
-                <div className="text-xs text-gray-600">
-                  {emp.employee_role} — {emp.employee_dept}
+        {/* Filter Bar - Hidden if Nominated */}
+        {!hasNominated && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center mt-6 animate-fadeIn">
+                
+                {/* Search - 50% */}
+                <div className="w-full md:w-1/2">
+                    <TextField 
+                        placeholder="Search by name..." 
+                        size="small"
+                        fullWidth
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        InputProps={{
+                            startAdornment: <InputAdornment position="start"><Search fontSize="small" className="text-gray-400"/></InputAdornment>,
+                            sx: { borderRadius: 2, backgroundColor: '#f9fafb', '& fieldset': { border: 'none' } }
+                        }}
+                    />
                 </div>
-              </div>
-            ))}
 
-            {employees.length === 0 && (
-              <p className="text-gray-500 text-sm italic text-center py-2">
-                No matching employees
-              </p>
-            )}
-          </div>
+                {/* Filters - 50% */}
+                <div className="w-full md:w-1/2 flex gap-3">
+                    <FormControl size="small" fullWidth>
+                        <InputLabel>Department</InputLabel>
+                        <Select 
+                            value={deptFilter} 
+                            label="Department"
+                            onChange={(e) => setDeptFilter(e.target.value)}
+                            sx={{ borderRadius: 2 }}
+                        >
+                            <MenuItem value="All">All</MenuItem>
+                            {departments.map((d: any) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                        </Select>
+                    </FormControl>
 
-          {/* REASON FIELD */}
-          {selectedEmployee && (
-            <div className="mt-6">
-              <Typography className="mb-2 font-semibold text-sm">
-                Reason for nominating{" "}
-                <span className="text-teal-700 font-bold">
-                  {selectedEmployee.username}
-                </span>
-                :
-              </Typography>
+                    <FormControl size="small" fullWidth>
+                        <InputLabel>Job Role</InputLabel>
+                        <Select 
+                            value={roleFilter} 
+                            label="Job Role"
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            sx={{ borderRadius: 2 }}
+                        >
+                            <MenuItem value="All">All</MenuItem>
+                            {roles.map((r: any) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                </div>
+            </div>
+        )}
+      </div>
 
-              <TextField
-                fullWidth
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto">
+        {loading ? (
+             <div className="flex justify-center p-10"><CircularProgress /></div>
+        ) : hasNominated && mySelection ? (
+            // --- VIEW: My Selection (Single Card) ---
+            <div className="flex justify-center animate-fadeIn">
+                <EmployeeCard 
+                    emp={mySelection} 
+                    isSelected={true} 
+                    onEdit={handleEditClick}
+                    onRemove={handleRemoveClick}
+                />
+            </div>
+        ) : (
+            // --- VIEW: Grid Selection ---
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                {filteredEmployees.map((emp) => (
+                    <EmployeeCard 
+                        key={emp.id} 
+                        emp={emp} 
+                        onClick={() => handleCardClick(emp)}
+                    />
+                ))}
+                {filteredEmployees.length === 0 && (
+                    <div className="col-span-full text-center text-gray-500 py-10">
+                        No employees found matching your filters.
+                    </div>
+                )}
+            </div>
+        )}
+      </div>
+
+      {/* 1. Nomination/Edit Dialog */}
+      <Dialog 
+        open={nominateDialogOpen} 
+        onClose={() => setNominateDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+        <DialogTitle className="flex justify-between items-center">
+            <span>{mode === 'edit' ? 'Update Nomination' : 'Nominate Colleague'}</span>
+            <IconButton onClick={() => setNominateDialogOpen(false)} size="small"><Close /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+            <div className="bg-gray-50 p-3 rounded-lg mb-4 flex items-center gap-3">
+                <Avatar sx={{ width: 32, height: 32, bgcolor: '#00A8A8', fontSize: 14 }}>{selectedEmp?.username.charAt(0)}</Avatar>
+                <div>
+                    <Typography variant="subtitle2" fontWeight="bold">{selectedEmp?.username}</Typography>
+                    <Typography variant="caption" className="text-gray-500">{selectedEmp?.employee_role || "Employee"}</Typography>
+                </div>
+            </div>
+            
+            <Typography variant="body2" className="text-gray-600 mb-2 font-medium">
+                Reason for Nomination <span className="text-red-500">*</span>
+            </Typography>
+            <TextField
+                autoFocus
                 multiline
                 rows={4}
-                placeholder="Enter reason here..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-
-              <Button
-                variant="contained"
                 fullWidth
-                sx={{
-                  mt: 3,
-                  py: 1.6,
-                  backgroundColor: "#008C8C",
-                  borderRadius: "28px",
-                  "&:hover": { backgroundColor: "#007373" },
-                }}
-                disabled={!reason.trim()}
-                onClick={submitNomination}
-              >
-                Submit Nomination
-              </Button>
+                placeholder={mode === 'edit' ? "Enter your new reason here..." : "Ex: For outstanding leadership..."}
+                value={reason} // Now this will have the pre-filled value
+                onChange={(e) => setReason(e.target.value)}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+            />
+        </DialogContent>
+        <DialogActions className="p-4 pt-0">
+            <Button onClick={() => setNominateDialogOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
+                Cancel
+            </Button>
+            <Button 
+                onClick={handleSubmit} 
+                variant="contained" 
+                disabled={!reason.trim() || submitting}
+                sx={{ bgcolor: '#00A8A8', borderRadius: 2, px: 4, "&:hover": { bgcolor: '#008f8f' } }}
+            >
+                {submitting ? "Saving..." : (mode === 'edit' ? "Update Nomination" : "Confirm Nomination")}
+            </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 2. Remove Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 4, p: 2 } }}
+      >
+        <div className="flex flex-col items-center text-center">
+            <div className="bg-red-50 text-red-500 p-3 rounded-full mb-3">
+                <Warning fontSize="large" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Typography variant="h6" fontWeight="bold" className="text-gray-900 mb-1">
+                Remove Nomination?
+            </Typography>
+            <Typography variant="body2" className="text-gray-500 mb-6">
+                Are you sure you want to remove your nomination?
+                <br/><br/>
+                You can nominate someone else afterwards.
+            </Typography>
+            
+            <div className="flex gap-3 w-full">
+                <Button 
+                    fullWidth 
+                    variant="outlined" 
+                    onClick={() => setDeleteDialogOpen(false)}
+                    sx={{ borderRadius: 2, borderColor: '#e5e7eb', color: '#374151' }}
+                >
+                    Keep It
+                </Button>
+                <Button 
+                    fullWidth 
+                    variant="contained" 
+                    color="error" 
+                    onClick={handleConfirmDelete}
+                    disabled={submitting}
+                    sx={{ borderRadius: 2, boxShadow: 'none' }}
+                >
+                    {submitting ? "Removing..." : "Yes, Remove"}
+                </Button>
+            </div>
+        </div>
+      </Dialog>
+
     </div>
   );
 };

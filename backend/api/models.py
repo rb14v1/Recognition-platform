@@ -37,6 +37,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=EMPLOYEE)
     employee_dept = models.CharField(max_length=50, blank=True, null=True)
     employee_role = models.CharField(max_length=50, blank=True, null=True)
+    manager_name = models.CharField(max_length=100, blank=True, null=True, help_text="Reporting Manager")
     email = models.EmailField(unique=True)
  
     objects = CustomUserManager()
