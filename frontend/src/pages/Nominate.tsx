@@ -4,12 +4,15 @@ import {
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, 
   InputAdornment, FormControl, InputLabel, IconButton, Avatar
 } from "@mui/material";
-import { Search, Warning, Close } from "@mui/icons-material";
+import { Search, Warning, Close, ArrowBack } from "@mui/icons-material"; 
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
 import EmployeeCard from "../components/EmployeeCard"; 
 
 const Nominate = () => {
+  const navigate = useNavigate();
+
   // --- Data States ---
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +20,7 @@ const Nominate = () => {
   // --- Status States ---
   const [hasNominated, setHasNominated] = useState(false);
   const [mySelection, setMySelection] = useState<any | null>(null);
-  const [savedReason, setSavedReason] = useState(""); // NEW: Store the existing reason
+  const [savedReason, setSavedReason] = useState("");
 
   // --- Filter States ---
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,7 +52,7 @@ const Nominate = () => {
 
       setHasNominated(statusRes.data.has_nominated);
       setMySelection(statusRes.data.nominee);
-      setSavedReason(statusRes.data.reason || ""); // Capture the reason from backend
+      setSavedReason(statusRes.data.reason || "");
       setEmployees(listRes.data);
 
     } catch (error) {
@@ -84,10 +87,7 @@ const Nominate = () => {
     e.stopPropagation();
     setSelectedEmp(mySelection);
     setMode("edit");
-    
-    // FIX: Pre-fill the reason with the saved one!
     setReason(savedReason); 
-    
     setNominateDialogOpen(true);
   };
 
@@ -123,7 +123,7 @@ const Nominate = () => {
         toast.success("Nomination removed.");
         setHasNominated(false);
         setMySelection(null);
-        setSavedReason(""); // Clear saved reason
+        setSavedReason("");
         setDeleteDialogOpen(false);
         loadPageData();
     } catch (err: any) {
@@ -137,6 +137,35 @@ const Nominate = () => {
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
       
       <div className="max-w-7xl mx-auto mb-8">
+        
+        {/* IMPROVED: Robust Back Button */}
+        <Button 
+            variant="outlined" 
+            startIcon={<ArrowBack />} 
+            onClick={() => navigate('/dashboard')}
+            sx={{ 
+                mb: 4, 
+                px: 3,
+                py: 1,
+                borderRadius: "12px",
+                textTransform: 'none',
+                fontWeight: 600,
+                borderColor: "#e2e8f0",
+                color: "#64748b",
+                backgroundColor: "white",
+                boxShadow: "0px 2px 4px rgba(0,0,0,0.02)",
+                transition: "all 0.2s",
+                "&:hover": { 
+                    borderColor: "#00A8A8", 
+                    color: "#00A8A8", 
+                    backgroundColor: "#f0fdfa",
+                    transform: "translateX(-4px)" // Subtle animation
+                }
+            }}
+        >
+            Back to Dashboard
+        </Button>
+
         <Typography variant="h5" fontWeight="800" className="text-gray-900 tracking-tight">
              {hasNominated ? "Your Selection" : "Nominate a Peer"}
         </Typography>
@@ -260,7 +289,7 @@ const Nominate = () => {
                 rows={4}
                 fullWidth
                 placeholder={mode === 'edit' ? "Enter your new reason here..." : "Ex: For outstanding leadership..."}
-                value={reason} // Now this will have the pre-filled value
+                value={reason} 
                 onChange={(e) => setReason(e.target.value)}
                 sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
             />
