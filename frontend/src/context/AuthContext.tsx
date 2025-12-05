@@ -3,20 +3,15 @@ import type { ReactNode } from 'react';
 import { authAPI } from '../api/auth';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
-
-interface User {
-    user_id: number;
-    username: string;
-    role?: string;
-}
+import type{ User} from '../types'; // Import the updated type
 
 interface AuthContextType {
     user: User | null;
     login: (data: any) => Promise<void>;
-    register: (data: any) => Promise<void>; // Added Register
+    register: (data: any) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
-    loading: boolean; // Added global loading state
+    loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,14 +21,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Helper to fetch user data from Backend
     const fetchUser = async () => {
         try {
             const res = await authAPI.getMe();
-            setUser(res.data); // This sets the REAL DB data
+            // Ensure we merge existing structure if needed, but res.data should be the source of truth
+            setUser(res.data); 
         } catch (error) {
             console.error("Failed to fetch user", error);
-            logout(); // Token is likely invalid
+            logout();
         }
     };
 
@@ -45,13 +40,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (decoded.exp * 1000 < Date.now()) {
                     logout();
                 } else {
-                    // 1. Set basic info from token immediately (fast UI)
+                    // 1. Initial hydration from token (fast)
                     setUser({
                         user_id: decoded.user_id,
                         username: decoded.username,
-                        role: decoded.role
+                        email: "", // Token doesn't have email usually
+                        role: decoded.role,
+                        employee_id: "Loading..." 
                     });
-                    // 2. Then fetch full details from DB (accurate UI)
+                    // 2. Fetch full details (slow but accurate)
                     fetchUser();
                 }
             } catch (e) {
@@ -64,17 +61,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const login = async (formData: any) => {
         const res = await authAPI.login(formData);
         const { access, refresh } = res.data;
-
         localStorage.setItem('accessToken', access);
         localStorage.setItem('refreshToken', refresh);
-
-        // Fetch real user details immediately after login
         await fetchUser();
-
         navigate('/dashboard');
     };
+
     const register = async (formData: any) => {
-        // Just pass through to API, let component handle redirect/toast on success
         await authAPI.register(formData);
     };
 

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { TextField, Button, Card, CardContent, IconButton, InputAdornment } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { authAPI } from "../api/auth"; // Import the new API service
+import { TextField, Button, Card, CardContent, IconButton, InputAdornment, Typography } from "@mui/material";
+import { Visibility, VisibilityOff, PersonAdd } from "@mui/icons-material";
+import { authAPI } from "../api/auth";
 import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
 
 function Register() {
   const navigate = useNavigate();
@@ -11,62 +12,107 @@ function Register() {
     username: "",
     email: "",
     password: "",
-    employee_id: "", // Matches Django model field
+    employee_id: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleRegister = async () => {
+    setLoading(true);
+    const toastId = toast.loading("Creating account...");
+
     try {
       await authAPI.register(form);
-      setSuccess("Registration successful! Redirecting...");
-      setError("");
-      setTimeout(() => navigate("/login"), 1200);
+      toast.success("Registration successful!", { id: toastId });
+      setTimeout(() => navigate("/login"), 1000);
     } catch (err: any) {
-      // Django returns errors as objects { field: ["error"] }
-      // This helper prints the first error found
+      // Handle Django error format
       const data = err.response?.data;
       const firstError = typeof data === 'object' ? Object.values(data)[0] : "Registration failed";
-      setError(Array.isArray(firstError) ? firstError[0] : String(firstError));
-      setSuccess("");
+      const msg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+      
+      toast.error(msg, { id: toastId });
+    } finally {
+      setLoading(false);
     }
   };
 
+  const inputStyles = {
+    "& .MuiOutlinedInput-root": { borderRadius: "12px" },
+    "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#00A8A8" },
+    "& .MuiInputLabel-root.Mui-focused": { color: "#00A8A8" }
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-[#f3f6f9]">
-      {/* <Header /> */}
-      <div className="flex-grow flex items-center justify-center mt-14">
-        <Card sx={{ width: 420, borderRadius: "20px", paddingY: 2, paddingX: 3, boxShadow: "0px 12px 30px rgba(0,0,0,0.12)", border: "1px solid #00D1C9", background: "white" }}>
-          <CardContent>
-            <h2 className="text-3xl font-bold text-center text-gray-800">Register</h2>
-            
-            {/* Username */}
-            <TextField fullWidth variant="outlined" placeholder="Username" name="username" value={form.username} onChange={handleChange} sx={{ mb: 3, "& .MuiOutlinedInput-root": { borderRadius: "30px", height: "48px" } }} />
-            
-            {/* Email */}
-            <TextField fullWidth variant="outlined" placeholder="Email" name="email" value={form.email} onChange={handleChange} sx={{ mb: 3, "& .MuiOutlinedInput-root": { borderRadius: "30px", height: "48px" } }} />
-            
-            {/* Employee ID - NOTE NAME CHANGE */}
-            <TextField fullWidth variant="outlined" placeholder="Employee ID" name="employee_id" value={form.employee_id} onChange={handleChange} sx={{ mb: 3, "& .MuiOutlinedInput-root": { borderRadius: "30px", height: "48px" } }} />
-            
-            {/* Password */}
-            <TextField fullWidth variant="outlined" placeholder="Password" type={showPassword ? "text" : "password"} name="password" value={form.password} onChange={handleChange} sx={{ mb: 2, "& .MuiOutlinedInput-root": { borderRadius: "30px", height: "48px" } }} InputProps={{ endAdornment: (<InputAdornment position="end"><IconButton onClick={() => setShowPassword(!showPassword)}>{showPassword ? <VisibilityOff /> : <Visibility />}</IconButton></InputAdornment>) }} />
+    <div className="flex flex-col items-center justify-center min-h-screen py-10 px-4">
+        <Card sx={{ 
+            width: "100%", 
+            maxWidth: 500, 
+            borderRadius: "24px", 
+            boxShadow: "0px 10px 40px rgba(0,0,0,0.08)", 
+            padding: 3 
+        }}>
+          <CardContent className="flex flex-col gap-4">
+            <div className="text-center mb-4">
+               <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Create Account</h1>
+               <p className="text-gray-500 text-sm mt-2">Join the recognition platform</p>
+            </div>
 
-            {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
-            {success && <p className="text-green-600 text-sm text-center mb-2">{success}</p>}
+            <TextField fullWidth label="Username" name="username" value={form.username} onChange={handleChange} sx={inputStyles} />
+            <TextField fullWidth label="Email Address" name="email" value={form.email} onChange={handleChange} sx={inputStyles} />
+            <TextField fullWidth label="Employee ID" name="employee_id" value={form.employee_id} onChange={handleChange} sx={inputStyles} helperText="Enter your official organizational ID" />
+            
+            <TextField
+              fullWidth label="Password" type={showPassword ? "text" : "password"} name="password" value={form.password} onChange={handleChange} sx={inputStyles}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-            <Button fullWidth variant="contained" onClick={handleRegister} sx={{ py: 1.2, mt: 2, fontSize: "16px", borderRadius: "30px", textTransform: "none", backgroundColor: "#00A8A8", "&:hover": { backgroundColor: "#009292" } }}>Register</Button>
+            <Button
+              fullWidth 
+              variant="contained" 
+              onClick={handleRegister} 
+              disabled={loading}
+              endIcon={!loading && <PersonAdd />}
+              sx={{ 
+                  py: 1.5, 
+                  mt: 2, 
+                  borderRadius: "12px", 
+                  backgroundColor: "#00A8A8", 
+                  fontWeight: 600,
+                  textTransform: "none",
+                  fontSize: "1rem",
+                  "&:hover": { backgroundColor: "#008f8f" }
+              }}
+            >
+              {loading ? "Registering..." : "Register"}
+            </Button>
 
-            <p className="text-center text-gray-600 text-sm mt-4">Already have an account? <span className="text-teal-600 cursor-pointer hover:underline" onClick={() => navigate("/login")}>Login here</span></p>
+            <div className="text-center mt-4">
+                <Typography variant="body2" color="textSecondary">
+                    Already have an account?{" "}
+                    <span 
+                        className="text-[#00A8A8] font-semibold cursor-pointer hover:underline" 
+                        onClick={() => navigate("/login")}
+                    >
+                        Login here
+                    </span>
+                </Typography>
+            </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

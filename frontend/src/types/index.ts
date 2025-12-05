@@ -3,9 +3,20 @@ export interface Manager {
   name: string;
 }
 
+
 export interface LoginResponse {
-  access: string;  // Changed 'token' to 'access' to match Django SimpleJWT default
-  refresh: string; // Added refresh token
-  role: "EMPLOYEE" | "COORDINATOR" | "COMMITTEE" | "ADMIN"; // Match Django Models uppercase
+  access: string;
+  refresh: string;
+  role: string;
   username: string;
+}
+export interface User {
+    user_id: number;
+    username: string;
+    email: string;
+    role: string;
+    employee_id: string;
+    employee_dept?: string; // Optional until backend confirms
+    employee_role?: string; // The job title (e.g. "Developer")
+    manager_name?: string;  // Placeholder for future backend update
 }
