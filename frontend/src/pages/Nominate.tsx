@@ -7,12 +7,9 @@ import {
 import { Search, Warning, Close } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
-import { useNavigate } from "react-router-dom";
 import EmployeeCard from "../components/EmployeeCard"; 
 
 const Nominate = () => {
-  const navigate = useNavigate();
-
   // --- Data States ---
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
