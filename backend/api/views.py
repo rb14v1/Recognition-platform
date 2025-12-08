@@ -257,22 +257,34 @@ class TeamMemberDetailView(APIView):
         return Response({"message": "Member updated successfully"})
 
 # 3. NOMINATION REVIEW (List & Action)
+# views.py
+
 class CoordinatorNominationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Only show nominations for MY team that are PENDING
-        nominations = Nomination.objects.filter(
-            nominee__manager=request.user, 
-            status='SUBMITTED'
-        )
+        # Check if frontend wants history or pending
+        filter_type = request.query_params.get('filter', 'pending') # default to pending
+
+        base_query = Nomination.objects.filter(nominee__manager=request.user).select_related('nominee', 'nominator')
+
+        if filter_type == 'history':
+            # Show what I have already acted upon
+            nominations = base_query.filter(status__in=['APPROVED', 'REJECTED']).order_by('-submitted_at')
+        else:
+            # Show what is waiting for me
+            nominations = base_query.filter(status='SUBMITTED').order_by('-submitted_at')
+
         data = [{
             "id": n.id,
             "nominee_name": n.nominee.username,
             "nominator_name": n.nominator.username,
             "reason": n.reason,
-            "submitted_at": n.submitted_at
+            "submitted_at": n.submitted_at,
+            "status": n.status, # Added status so frontend knows if it was approved/rejected
+            "nominee_role": n.nominee.employee_role or "Employee",
         } for n in nominations]
+        
         return Response(data)
 
     def post(self, request):
@@ -280,13 +292,15 @@ class CoordinatorNominationView(APIView):
         action = request.data.get('action') # 'APPROVE' or 'REJECT'
 
         try:
+            # Strict Team Check: I can only approve my own team's nominations
             nom = Nomination.objects.get(id=nom_id, nominee__manager=request.user)
+            
             nom.status = 'APPROVED' if action == 'APPROVE' else 'REJECTED'
             nom.save()
             return Response({"message": f"Nomination {action}D"})
         except Nomination.DoesNotExist:
-            return Response({"error": "Nomination not found"}, status=404)    
-        
+            return Response({"error": "Nomination not found or not in your team"}, status=404)
+                
 class UnassignedEmployeesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

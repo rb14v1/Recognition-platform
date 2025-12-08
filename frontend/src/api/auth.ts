@@ -95,5 +95,8 @@ export const authAPI = {
     
     reviewNomination: async (data: { nomination_id: number, action: 'APPROVE' | 'REJECT' }) => {
         return await api.post('coordinator/nominations/', data);
+    },
+    getCoordinatorNominations: async (filter: 'pending' | 'history' = 'pending') => {
+        return await api.get(`coordinator/nominations/?filter=${filter}`);
     }
 };
