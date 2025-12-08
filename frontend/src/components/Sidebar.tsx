@@ -7,7 +7,7 @@ import {
   TrendingUp,
   Gavel
 } from "@mui/icons-material";
-import { Tooltip, IconButton, Typography } from "@mui/material";
+import { Tooltip, IconButton} from "@mui/material";
 
 interface SidebarProps {
   activeSection: string;
