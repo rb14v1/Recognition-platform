@@ -4,7 +4,8 @@ import {
   WorkspacePremium, 
   MenuOpen, 
   Menu,
-  TrendingUp // Icon for Promote
+  TrendingUp,
+  Gavel
 } from "@mui/icons-material";
 import { Tooltip, IconButton, Typography } from "@mui/material";
 
@@ -13,16 +14,37 @@ interface SidebarProps {
   setActiveSection: (section: string) => void;
   isOpen: boolean;
   toggleSidebar: () => void;
+  userRole: string;
 }
 
-const Sidebar = ({ activeSection, setActiveSection, isOpen, toggleSidebar }: SidebarProps) => {
-  const menuItems = [
-    { id: "workspace", label: "My Workspace", icon: <DashboardIcon /> },
-    { id: "team", label: "My Team", icon: <People /> },
-    { id: "add-members", label: "Add Members", icon: <People sx={{ opacity: 0.5 }} /> }, // New
-    { id: "promote", label: "Promote Employee", icon: <TrendingUp /> }, // New
-    { id: "approvals", label: "Approvals", icon: <WorkspacePremium /> },
+const Sidebar = ({ activeSection, setActiveSection, isOpen, toggleSidebar, userRole }: SidebarProps) => {
+  
+  // Base items (Everyone sees these)
+  let menuItems = [
+    { id: "workspace", label: "Dashboard", icon: <DashboardIcon /> },
   ];
+
+  // COORDINATOR ONLY Features (Team Management)
+  if (userRole === 'COORDINATOR') {
+    menuItems.push(
+        { id: "team", label: "My Team", icon: <People /> },
+        { id: "add-members", label: "Add Members", icon: <People sx={{ opacity: 0.5 }} /> },
+        { id: "approvals", label: "Approvals", icon: <WorkspacePremium /> } // Coordinator Level Approvals
+    );
+  }
+
+  // COMMITTEE ONLY Features (High Level)
+  if (['COMMITTEE', 'ADMIN'].includes(userRole)) {
+     menuItems.push(
+        { id: "committee-review", label: "Final Review", icon: <Gavel /> } // Shows global approved list
+     );
+  }
+
+  // SHARED Features (Both need this)
+  // Both need to be able to promote people below them
+  menuItems.push(
+    { id: "promote", label: "Promote Role", icon: <TrendingUp /> }
+  );
 
   return (
     <aside 
@@ -35,12 +57,6 @@ const Sidebar = ({ activeSection, setActiveSection, isOpen, toggleSidebar }: Sid
           {isOpen ? <MenuOpen /> : <Menu />}
         </IconButton>
       </div>
-
-      {isOpen && (
-        <Typography variant="caption" className="px-6 text-gray-400 font-bold tracking-widest mb-2 block">
-            MENU
-        </Typography>
-      )}
 
       <div className="space-y-2 px-3">
         {menuItems.map((item) => (

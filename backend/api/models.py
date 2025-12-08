@@ -98,9 +98,11 @@ class Nomination(models.Model):
     )
     
     STATUS_CHOICES = [
-        ('SUBMITTED', 'Submitted'),
-        ('APPROVED', 'Approved'),
-        ('REJECTED', 'Rejected'),
+        ('SUBMITTED', 'Submitted'),             # Step 1: Pending Coordinator
+        ('APPROVED', 'Coordinator Approved'),   # Step 2: Pending Committee
+        ('COMMITTEE_APPROVED', 'Finalist'),     # Step 3: Pending Admin Vote
+        ('AWARDED', 'Winner'),                  # Step 4: Final Winner (Admin Only)
+        ('REJECTED', 'Rejected'),               # Dropped
     ]
         # New fields you want:
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUBMITTED')

@@ -249,58 +249,90 @@ class TeamMemberDetailView(APIView):
         member.employee_dept = request.data.get('employee_dept', member.employee_dept)
         member.employee_role = request.data.get('employee_role', member.employee_role)
         
-        # Promotion Logic: Coordinator can promote Employee -> Coordinator
-        if request.data.get('promote_to_coordinator'):
-            member.role = User.COORDINATOR
-        
         member.save()
         return Response({"message": "Member updated successfully"})
 
-# 3. NOMINATION REVIEW (List & Action)
-# views.py
-
+# 2. UPDATED: Smart Nomination View for both Coordinators and Committee
+# 1. NOMINATIONS (The Pipeline Logic)
 class CoordinatorNominationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Check if frontend wants history or pending
-        filter_type = request.query_params.get('filter', 'pending') # default to pending
+        filter_type = request.query_params.get('filter', 'pending')
+        user_role = request.user.role
 
-        base_query = Nomination.objects.filter(nominee__manager=request.user).select_related('nominee', 'nominator')
+        # Base Query: Get names and details
+        query = Nomination.objects.select_related('nominee', 'nominator').order_by('-submitted_at')
 
-        if filter_type == 'history':
-            # Show what I have already acted upon
-            nominations = base_query.filter(status__in=['APPROVED', 'REJECTED']).order_by('-submitted_at')
+        # --- LOGIC BRANCHING ---
+        
+        # A. COMMITTEE VIEW: They see everything that Coordinators have APPROVED
+        if user_role == 'COMMITTEE':
+            if filter_type == 'history':
+                # Show what Committee has already processed
+                nominations = query.filter(status__in=['COMMITTEE_APPROVED', 'REJECTED', 'AWARDED'])
+            else:
+                # Show incoming pool (Approved by Coordinators)
+                nominations = query.filter(status='APPROVED')
+
+        # B. COORDINATOR VIEW: They only see their direct reports
         else:
-            # Show what is waiting for me
-            nominations = base_query.filter(status='SUBMITTED').order_by('-submitted_at')
+            if filter_type == 'history':
+                nominations = query.filter(nominee__manager=request.user, status__in=['APPROVED', 'REJECTED', 'COMMITTEE_APPROVED', 'AWARDED'])
+            else:
+                nominations = query.filter(nominee__manager=request.user, status='SUBMITTED')
 
+        # Serialize
         data = [{
             "id": n.id,
-            "nominee_name": n.nominee.username,
-            "nominator_name": n.nominator.username,
+            "nominee_name": n.nominee_name or n.nominee.username,
+            "nominator_name": n.nominator_name or n.nominator.username,
             "reason": n.reason,
             "submitted_at": n.submitted_at,
-            "status": n.status, # Added status so frontend knows if it was approved/rejected
+            "status": n.status,
             "nominee_role": n.nominee.employee_role or "Employee",
+            "nominee_dept": n.nominee.employee_dept or "General"
         } for n in nominations]
         
         return Response(data)
 
     def post(self, request):
         nom_id = request.data.get('nomination_id')
-        action = request.data.get('action') # 'APPROVE' or 'REJECT'
+        action = request.data.get('action') # 'APPROVE', 'REJECT', 'FINAL_APPROVE'
+        user_role = request.user.role
 
         try:
-            # Strict Team Check: I can only approve my own team's nominations
-            nom = Nomination.objects.get(id=nom_id, nominee__manager=request.user)
-            
-            nom.status = 'APPROVED' if action == 'APPROVE' else 'REJECTED'
-            nom.save()
-            return Response({"message": f"Nomination {action}D"})
-        except Nomination.DoesNotExist:
-            return Response({"error": "Nomination not found or not in your team"}, status=404)
+            nom = Nomination.objects.get(id=nom_id)
+
+            # --- SECURITY & STATE MACHINE ---
+
+            # 1. Coordinator Logic
+            if user_role == 'COORDINATOR':
+                # Must be my team
+                if nom.nominee.manager != request.user:
+                    return Response({"error": "Not your team member"}, status=403)
                 
+                nom.status = 'APPROVED' if action == 'APPROVE' else 'REJECTED'
+
+            # 2. Committee Logic
+            elif user_role == 'COMMITTEE':
+                # Can only act on Coordinator Approved items
+                if nom.status != 'APPROVED':
+                    return Response({"error": "This nomination is not ready for committee review"}, status=400)
+                
+                # 'FINAL_APPROVE' here means moving to the next stage (Admin Pool)
+                nom.status = 'COMMITTEE_APPROVED' if action == 'APPROVE' else 'REJECTED'
+
+            # 3. Admin Logic (Optional, for later)
+            elif user_role == 'ADMIN':
+                nom.status = 'AWARDED' if action == 'APPROVE' else 'REJECTED'
+
+            nom.save()
+            return Response({"message": f"Status updated to {nom.status}"})
+
+        except Nomination.DoesNotExist:
+            return Response({"error": "Nomination not found"}, status=404)
+                                
 class UnassignedEmployeesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

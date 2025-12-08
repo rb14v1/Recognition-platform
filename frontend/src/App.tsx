@@ -7,36 +7,40 @@ import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Nominate from "./pages/Nominate";
 
-// 👇 IMPORT THE SEPARATE FILES
+// 👇 THE BIG CHANGE: One Dashboard to rule them all
 import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
-import ManagerDashboard from "./pages/dashboards/CoordinatorDashboard";
-import CommitteeDashboard from "./pages/dashboards/CommitteeDashboard";
-import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import ManagementDashboard from "./pages/dashboards/ManagementDashboard"; // This handles Manager, Committee, & Admin
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* Public Routes */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Route>
 
+          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
              <Route element={<MainLayout />}>
-                {/* Traffic Cop */}
+                {/* 1. Traffic Cop (Redirects based on Role) */}
                 <Route path="/dashboard" element={<Dashboard />} />
 
-                {/* Specific Roles */}
+                {/* 2. Employee View */}
                 <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
-                <Route path="/dashboard/manager" element={<ManagerDashboard />} />
-                <Route path="/dashboard/committee" element={<CommitteeDashboard />} />
-                <Route path="/dashboard/admin" element={<AdminDashboard />} />
+
+                {/* 3. Management View (Coordinator + Committee + Admin) */}
+                {/* All these roles go here now! */}
+                <Route path="/dashboard/management" element={<ManagementDashboard />} />
+                
+                {/* 4. Utilities */}
                 <Route path="/dashboard/nominate" element={<Nominate />} />
              </Route>
           </Route>
 
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AuthProvider>
