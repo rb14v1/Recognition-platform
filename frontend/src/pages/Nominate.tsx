@@ -4,7 +4,7 @@ import {
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, 
   InputAdornment, FormControl, InputLabel, IconButton, Avatar
 } from "@mui/material";
-import { Search, Warning, Close, ArrowBack } from "@mui/icons-material"; 
+import { Search, Warning, Close, ArrowBack } from "@mui/icons-material"; // Added ArrowBack
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
@@ -138,29 +138,16 @@ const Nominate = () => {
       
       <div className="max-w-7xl mx-auto mb-8">
         
-        {/* IMPROVED: Robust Back Button */}
+        {/* NEW: Back to Dashboard Button */}
         <Button 
-            variant="outlined" 
             startIcon={<ArrowBack />} 
             onClick={() => navigate('/dashboard')}
             sx={{ 
-                mb: 4, 
-                px: 3,
-                py: 1,
-                borderRadius: "12px",
+                mb: 3, 
+                color: 'text.secondary', 
                 textTransform: 'none',
-                fontWeight: 600,
-                borderColor: "#e2e8f0",
-                color: "#64748b",
-                backgroundColor: "white",
-                boxShadow: "0px 2px 4px rgba(0,0,0,0.02)",
-                transition: "all 0.2s",
-                "&:hover": { 
-                    borderColor: "#00A8A8", 
-                    color: "#00A8A8", 
-                    backgroundColor: "#f0fdfa",
-                    transform: "translateX(-4px)" // Subtle animation
-                }
+                fontWeight: 500,
+                "&:hover": { backgroundColor: "rgba(17, 87, 17, 0.04)", color: "text.primary" }
             }}
         >
             Back to Dashboard

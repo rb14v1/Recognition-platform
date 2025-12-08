@@ -6,7 +6,8 @@ import {
   Checkbox, 
   ToggleButton, 
   ToggleButtonGroup,
-  Box
+  Box,
+  CircularProgress
 } from "@mui/material";
 import { Search, PersonAdd, SentimentDissatisfied } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
@@ -24,7 +25,7 @@ const AddMembers = ({ }: AddMembersProps) => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load initial list on mount (optional, or wait for search)
+  // Load initial list on mount
   useEffect(() => { 
       handleSearch(); 
   }, []);
@@ -116,31 +117,35 @@ const AddMembers = ({ }: AddMembersProps) => {
       </div>
 
       {/* 3. Results Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {unassignedList.map(emp => (
-            <div key={emp.id} onClick={() => toggleSelection(emp.id)} className="relative cursor-pointer group h-full">
-                {/* Visual Selection Overlay */}
-                <div className={`absolute inset-0 border-2 rounded-xl z-10 transition-all pointer-events-none duration-200
-                    ${selectedIds.includes(emp.id) 
-                        ? 'border-teal-500 bg-teal-50/10 shadow-lg scale-[1.02]' 
-                        : 'border-transparent group-hover:border-gray-200'
-                    }`} 
-                />
-                
-                {/* Checkbox Badge */}
-                <div className="absolute top-3 right-3 z-20">
-                    <Checkbox 
-                        checked={selectedIds.includes(emp.id)} 
-                        icon={<div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-white" />}
-                        checkedIcon={<div className="w-6 h-6 rounded-full bg-teal-500 border-2 border-teal-500 flex items-center justify-center"><div className="w-2 h-2 bg-white rounded-full"/></div>}
+      {loading ? (
+          <div className="flex justify-center p-10"><CircularProgress sx={{ color: '#00A8A8' }} /></div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {unassignedList.map(emp => (
+                <div key={emp.id} onClick={() => toggleSelection(emp.id)} className="relative cursor-pointer group h-full">
+                    {/* Visual Selection Overlay */}
+                    <div className={`absolute inset-0 border-2 rounded-xl z-10 transition-all pointer-events-none duration-200
+                        ${selectedIds.includes(emp.id) 
+                            ? 'border-teal-500 bg-teal-50/10 shadow-lg scale-[1.02]' 
+                            : 'border-transparent group-hover:border-gray-200'
+                        }`} 
                     />
+                    
+                    {/* Checkbox Badge */}
+                    <div className="absolute top-3 right-3 z-20">
+                        <Checkbox 
+                            checked={selectedIds.includes(emp.id)} 
+                            icon={<div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-white" />}
+                            checkedIcon={<div className="w-6 h-6 rounded-full bg-teal-500 border-2 border-teal-500 flex items-center justify-center"><div className="w-2 h-2 bg-white rounded-full"/></div>}
+                        />
+                    </div>
+                    
+                    {/* Reusing Employee Card */}
+                    <EmployeeCard emp={emp} isSelected={selectedIds.includes(emp.id)} />
                 </div>
-                
-                {/* Reusing Employee Card - passing isSelected to change internal styles if needed */}
-                <EmployeeCard emp={emp} isSelected={selectedIds.includes(emp.id)} />
-            </div>
-        ))}
-      </div>
+            ))}
+        </div>
+      )}
 
       {/* 4. Empty State */}
       {!loading && unassignedList.length === 0 && (
