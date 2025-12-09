@@ -1,40 +1,47 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Typography, 
   Button, 
-  TextField, 
-  Checkbox, 
-  ToggleButton, 
-  ToggleButtonGroup,
   Box,
-  CircularProgress
+  CircularProgress,
+  Avatar,
+  Checkbox,
+  Chip
 } from "@mui/material";
-import { Search, PersonAdd, SentimentDissatisfied } from "@mui/icons-material";
+import { PersonAdd, SentimentDissatisfied } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
-import EmployeeCard from "./EmployeeTable";
+import SearchBar from "../components/SearchBar"; 
 
 interface AddMembersProps {
     onBack?: () => void; 
 }
 
 const AddMembers = ({ }: AddMembersProps) => {
-  const [unassignedList, setUnassignedList] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<'name' | 'id'>('name');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  // Data State
+  const [fullList, setFullList] = useState<any[]>([]); 
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<'name' | 'empId'>('name');
+  const [filters, setFilters] = useState({
+    dept: "All",
+    role: "All",
+    location: "All"
+  });
 
   // Load initial list on mount
   useEffect(() => { 
-      handleSearch(); 
+      loadUnassignedEmployees(); 
   }, []);
 
-  const handleSearch = async () => {
+  const loadUnassignedEmployees = async () => {
     setLoading(true);
     try {
-        const res = await authAPI.searchUnassigned(searchQuery, searchType);
-        setUnassignedList(res.data);
+        const res = await authAPI.searchUnassigned("", {}); 
+        setFullList(res.data);
     } catch(e) { 
         console.error(e);
         toast.error("Failed to fetch employees"); 
@@ -49,7 +56,7 @@ const AddMembers = ({ }: AddMembersProps) => {
         await authAPI.linkEmployeesToTeam(selectedIds);
         toast.success(`Successfully added ${selectedIds.length} members to your team!`);
         setSelectedIds([]);
-        handleSearch(); // Refresh list to remove added users
+        loadUnassignedEmployees(); // Refresh list
     } catch(e) { 
         toast.error("Failed to add members"); 
     }
@@ -59,10 +66,51 @@ const AddMembers = ({ }: AddMembersProps) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  // --- DERIVED OPTIONS ---
+  const departments = useMemo(() => 
+    ["All", ...Array.from(new Set(fullList.map(e => e.employee_dept).filter(Boolean)))], 
+    [fullList]
+  );
+
+  const roles = useMemo(() => 
+    ["All", ...Array.from(new Set(fullList.map(e => e.employee_role).filter(Boolean)))], 
+    [fullList]
+  );
+
+  const locations = useMemo(() => 
+    ["All", ...Array.from(new Set(fullList.map(e => e.location).filter(Boolean)))], 
+    [fullList]
+  );
+
+  // --- FILTERING LOGIC ---
+  const filteredList = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+
+    return fullList.filter((emp) => {
+      const username = emp.username?.toLowerCase() || "";
+      const empId = emp.employee_id?.toLowerCase() || "";
+      const dept = emp.employee_dept || "";
+      const role = emp.employee_role || "";
+      const loc = emp.location || "";
+
+      const matchesSearch = searchType === "name" 
+        ? username.includes(q) 
+        : empId.includes(q);
+
+      const matchesDept = filters.dept === "All" || dept === filters.dept;
+      const matchesRole = filters.role === "All" || role === filters.role;
+      const matchesLoc = filters.location === "All" || loc === filters.location;
+
+      return matchesSearch && matchesDept && matchesRole && matchesLoc;
+    });
+  }, [fullList, searchTerm, searchType, filters]);
+
+
   return (
-    <div className="animate-fadeIn max-w-7xl mx-auto pb-24">
-      {/* 1. Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 border-b border-gray-100 pb-4">
+    <div className="animate-fadeIn max-w-7xl mx-auto pb-32 p-6">
+      
+      {/* 1. Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 border-b border-gray-100 pb-4">
         <div>
             <Typography variant="h5" fontWeight="bold" className="text-gray-800 flex items-center gap-2">
                 <PersonAdd className="text-teal-600" fontSize="large"/> Add Team Members
@@ -73,95 +121,115 @@ const AddMembers = ({ }: AddMembersProps) => {
         </div>
       </div>
 
-      {/* 2. Search Bar & Filters */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row gap-4 items-center">
-         <ToggleButtonGroup
-            value={searchType}
-            exclusive
-            onChange={(_, v) => v && setSearchType(v)}
-            size="small"
-            sx={{ height: 40 }}
-        >
-            <ToggleButton value="name" className="px-4 font-bold">Name</ToggleButton>
-            <ToggleButton value="id" className="px-4 font-bold">Emp ID</ToggleButton>
-        </ToggleButtonGroup>
+      {/* 2. Search Bar */}
+      <SearchBar 
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchType={searchType}
+        onSearchTypeChange={setSearchType}
+        filters={filters}
+        onFilterChange={(key, val) => setFilters(prev => ({ ...prev, [key]: val }))}
+        options={{ departments, roles, locations }}
+      />
 
-        <div className="flex-1 w-full relative">
-            <TextField 
-                fullWidth 
-                size="small" 
-                placeholder={`Search unassigned employees by ${searchType === 'name' ? 'Name' : 'ID'}...`} 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                sx={{ 
-                    '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: '#f8fafc' } 
-                }}
-            />
-        </div>
-        
-        <Button 
-            variant="contained" 
-            onClick={handleSearch} 
-            sx={{ 
-                bgcolor: '#00A8A8', 
-                borderRadius: 3, 
-                px: 4, 
-                height: 40,
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#008f8f', boxShadow: '0 4px 12px rgba(0,168,168,0.3)' } 
-            }}
-        >
-            <Search className="mr-2"/> Search
-        </Button>
-      </div>
-
-      {/* 3. Results Grid */}
+      {/* 3. LIST VIEW (Rows) */}
       {loading ? (
           <div className="flex justify-center p-10"><CircularProgress sx={{ color: '#00A8A8' }} /></div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {unassignedList.map(emp => (
-                <div key={emp.id} onClick={() => toggleSelection(emp.id)} className="relative cursor-pointer group h-full">
-                    {/* Visual Selection Overlay */}
-                    <div className={`absolute inset-0 border-2 rounded-xl z-10 transition-all pointer-events-none duration-200
-                        ${selectedIds.includes(emp.id) 
-                            ? 'border-teal-500 bg-teal-50/10 shadow-lg scale-[1.02]' 
-                            : 'border-transparent group-hover:border-gray-200'
-                        }`} 
-                    />
-                    
-                    {/* Checkbox Badge */}
-                    <div className="absolute top-3 right-3 z-20">
-                        <Checkbox 
-                            checked={selectedIds.includes(emp.id)} 
-                            icon={<div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-white" />}
-                            checkedIcon={<div className="w-6 h-6 rounded-full bg-teal-500 border-2 border-teal-500 flex items-center justify-center"><div className="w-2 h-2 bg-white rounded-full"/></div>}
-                        />
+        <div className="flex flex-col gap-4">
+            {filteredList.map(emp => {
+                const isSelected = selectedIds.includes(emp.id);
+                return (
+                    <div 
+                        key={emp.id} 
+                        onClick={() => toggleSelection(emp.id)} 
+                        // The Row Container Style
+                        className={`
+                            group flex flex-col md:flex-row items-center p-4 rounded-xl border transition-all duration-200 cursor-pointer
+                            ${isSelected 
+                                ? 'bg-teal-50 border-teal-500 shadow-md' 
+                                : 'bg-white border-gray-200 hover:shadow-md hover:border-teal-300'
+                            }
+                        `}
+                    >
+                        {/* --- LEFT: Identity --- */}
+                        <div className="flex items-center gap-4 w-full md:w-1/4 mb-2 md:mb-0">
+                            <Avatar 
+                                sx={{ 
+                                    width: 48, height: 48, 
+                                    bgcolor: isSelected ? '#00A8A8' : '#e0f2f1', 
+                                    color: isSelected ? 'white' : '#00695c',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                {emp.username?.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <div>
+                                <Typography fontWeight="bold" className="text-gray-900 leading-tight">
+                                    {emp.username}
+                                </Typography>
+                                {/* ID shown below name on mobile, but we can style it for desktop too */}
+                            </div>
+                        </div>
+
+                        {/* --- MIDDLE COLUMNS --- */}
+                        <div className="flex items-center justify-between w-full md:flex-1 gap-4">
+                            
+                            {/* ID Column */}
+                            <div className="w-20 text-sm text-gray-500 font-mono hidden md:block">
+                                {emp.employee_id}
+                            </div>
+
+                            {/* Role Column */}
+                            <div className="flex-1 text-sm font-medium text-gray-700">
+                                {emp.employee_role || <span className="text-gray-400 italic">No Title</span>}
+                            </div>
+
+                            {/* Dept Column */}
+                            <div className="w-32">
+                                <Chip 
+                                    label={emp.employee_dept || "General"} 
+                                    size="small"
+                                    sx={{ 
+                                        bgcolor: '#f3f4f6', 
+                                        color: '#4b5563', 
+                                        fontWeight: 600,
+                                        borderRadius: '6px'
+                                    }}
+                                />
+                            </div>
+
+                            {/* --- RIGHT: Checkbox --- */}
+                            <div className="pl-4 border-l border-gray-100">
+                                <Checkbox 
+                                    checked={isSelected} 
+                                    sx={{ 
+                                        color: '#cbd5e1',
+                                        '&.Mui-checked': { color: '#00A8A8' }
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </div>
-                    
-                    {/* Reusing Employee Card */}
-                    <EmployeeCard emp={emp} isSelected={selectedIds.includes(emp.id)} />
-                </div>
-            ))}
+                );
+            })}
         </div>
       )}
 
-      {/* 4. Empty State */}
-      {!loading && unassignedList.length === 0 && (
+      {/* Empty State */}
+      {!loading && filteredList.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-gray-400 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
             <SentimentDissatisfied sx={{ fontSize: 60, opacity: 0.2, mb: 2 }} />
-            <Typography variant="h6" className="font-medium text-gray-400">No unassigned employees found.</Typography>
-            <Typography variant="body2" className="text-gray-400">Try searching for a different name or ID.</Typography>
+            <Typography variant="h6" className="font-medium text-gray-400">No employees found.</Typography>
         </div>
       )}
 
-      {/* 5. Floating Action Bar (Only shows when items are selected) */}
+      {/* 4. Floating Action Bar */}
       {selectedIds.length > 0 && (
           <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 animate-bounceIn">
               <Box className="bg-gray-900 text-white pl-6 pr-2 py-2 rounded-full shadow-2xl flex items-center gap-6 border border-gray-700 backdrop-blur-md bg-opacity-95">
                   <div className="flex flex-col">
-                    <Typography fontWeight="bold" variant="body1">{selectedIds.length} Users Selected</Typography>
+                    <Typography fontWeight="bold" variant="body1">{selectedIds.length} Selected</Typography>
                     <Typography variant="caption" className="text-gray-400">Ready to assign</Typography>
                   </div>
                   
@@ -179,8 +247,7 @@ const AddMembers = ({ }: AddMembersProps) => {
                         px: 4,
                         py: 1,
                         textTransform: 'none',
-                        fontWeight: 'bold',
-                        fontSize: '1rem'
+                        fontWeight: 'bold'
                     }}
                   >
                     Add to Team

@@ -84,26 +84,30 @@ class PromotableUsersView(generics.ListAPIView):
            
         return queryset        
        
-class UserProfileView(generics.RetrieveAPIView):
+class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserProfileSerializer
  
     def get_object(self):
-        # Simply return the user who is currently logged in
-        return self.request.user        
+        # Returns the current user so they can PATCH their own data
+        return self.request.user      
  
 class NominationOptionsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserNominationListSerializer
  
     def get_queryset(self):
-        # Start with all users except the one making the request (can't nominate yourself!)
+        # Start with all users except the one making the request
         user = self.request.user
         queryset = User.objects.exclude(id=user.id).exclude(role='ADMIN')
-        # 1. Search by Name (Username)
+
+        # 1. Search by Name OR Employee ID (Unified Search)
         search_query = self.request.query_params.get('search', None)
         if search_query:
-            queryset = queryset.filter(username__icontains=search_query)
+            queryset = queryset.filter(
+                Q(username__icontains=search_query) | 
+                Q(employee_id__icontains=search_query)
+            )
  
         # 2. Filter by Employee Dept
         dept_filter = self.request.query_params.get('dept', None)
@@ -114,6 +118,11 @@ class NominationOptionsView(generics.ListAPIView):
         role_filter = self.request.query_params.get('role', None)
         if role_filter:
             queryset = queryset.filter(employee_role__iexact=role_filter)
+
+        # 4. Filter by Location (NEW)
+        loc_filter = self.request.query_params.get('location', None)
+        if loc_filter:
+            queryset = queryset.filter(location__iexact=loc_filter)
  
         return queryset
  
@@ -347,20 +356,34 @@ class UnassignedEmployeesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
     def get(self, request):
-        # SEARCH: Find employees with NO manager
-        search_query = request.query_params.get('search', '').strip()
-        search_type = request.query_params.get('type', 'name') # 'name' or 'id'
-       
+        # Base Query: Find employees with NO manager
         queryset = User.objects.filter(
             manager__isnull=True,
             role='EMPLOYEE'
         ).exclude(id=request.user.id)
  
+        # 1. Unified Search (Name OR Employee ID)
+        search_query = request.query_params.get('search', '').strip()
         if search_query:
-            if search_type == 'id':
-                queryset = queryset.filter(employee_id__icontains=search_query)
-            else:
-                queryset = queryset.filter(username__icontains=search_query)
+            queryset = queryset.filter(
+                Q(username__icontains=search_query) | 
+                Q(employee_id__icontains=search_query)
+            )
+
+        # 2. Filter by Dept
+        dept_filter = request.query_params.get('dept', None)
+        if dept_filter:
+            queryset = queryset.filter(employee_dept__iexact=dept_filter)
+
+        # 3. Filter by Role (Job Title)
+        role_filter = request.query_params.get('role', None)
+        if role_filter:
+            queryset = queryset.filter(employee_role__iexact=role_filter)
+
+        # 4. Filter by Location
+        loc_filter = request.query_params.get('location', None)
+        if loc_filter:
+            queryset = queryset.filter(location__iexact=loc_filter)
  
         # Use TeamMemberSerializer since it has the fields we need
         serializer = TeamMemberSerializer(queryset, many=True)

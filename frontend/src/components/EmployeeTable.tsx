@@ -1,23 +1,23 @@
-import { Avatar, Typography, Button, IconButton, Tooltip } from "@mui/material";
+import { Avatar, Typography, Button, IconButton, Tooltip, Chip } from "@mui/material";
 import { Edit, Delete, HowToVote, School, EmojiEvents } from "@mui/icons-material";
- 
+
 interface EmployeeTableProps {
   employees: any[];
- 
+
   // Modes
   mode?: "manage" | "promote" | "vote" | "nominate";
- 
+
   // Actions
   onEdit?: (emp: any) => void;
   onRemove?: (emp: any) => void;
   onPromote?: (emp: any) => void;
   onVote?: (id: number, name: string) => void;
   onSelect?: (emp: any) => void; // For nominate page
- 
+
   // State for Voting
   hasVoted?: boolean;
 }
- 
+
 const EmployeeTable = ({
   employees,
   mode = "manage",
@@ -28,145 +28,175 @@ const EmployeeTable = ({
   onSelect,
   hasVoted = false
 }: EmployeeTableProps) => {
- 
+
   if (!employees || employees.length === 0) return null;
- 
+
   return (
-    <div className="flex flex-col gap-3">
-      {employees.map((emp) => (
-        <div
-          key={emp.id}
-          className="group flex flex-col md:flex-row items-center justify-between p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-        >
-          {/* LEFT: Avatar & Identity */}
-          <div className="flex items-center gap-4 w-full md:w-1/3 mb-4 md:mb-0">
-            <Avatar
+    <div className="w-full">
+      
+      {/* --- TABLE HEADER (Visible only on Desktop) --- */}
+      <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <div className="col-span-5">Employee Details</div>
+        <div className="col-span-3">Job Title</div>
+        <div className="col-span-2">Department</div>
+        <div className="col-span-2 text-right">Action</div>
+      </div>
+
+      {/* --- TABLE BODY --- */}
+      <div className="flex flex-col gap-3 md:gap-0">
+        {employees.map((emp) => (
+          <div
+            key={emp.id}
+            className="group relative grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 bg-white border border-gray-100 md:border-t-0 md:first:border-t md:border-x md:last:rounded-b-xl rounded-xl md:rounded-none shadow-sm md:shadow-none hover:bg-teal-50/30 transition-all duration-200"
+          >
+            
+            {/* 1. IDENTITY COLUMN */}
+            <div className="col-span-5 flex items-center gap-4">
+              <Avatar
                 sx={{
-                    width: 48, height: 48,
-                    bgcolor: '#00A8A8',
-                    fontWeight: 'bold', fontSize: '1.1rem'
+                  width: 40, height: 40,
+                  bgcolor: '#00A8A8',
+                  fontWeight: 'bold', fontSize: '1rem'
                 }}
-            >
+              >
                 {(emp.username || emp.nominee_name)?.charAt(0).toUpperCase()}
-            </Avatar>
-            <div>
-                <Typography variant="subtitle1" fontWeight="bold" className="text-gray-900 leading-tight">
-                    {emp.username || emp.nominee_name}
+              </Avatar>
+              <div>
+                <Typography variant="subtitle2" fontWeight="bold" className="text-gray-900 leading-tight">
+                  {emp.username || emp.nominee_name}
                 </Typography>
                 <Typography variant="caption" className="text-gray-400 font-mono">
-                    ID: {emp.employee_id || "N/A"}
+                  ID: {emp.employee_id || "N/A"}
                 </Typography>
+              </div>
             </div>
-          </div>
- 
-          {/* MIDDLE: Role & Dept */}
-          <div className="flex flex-row md:flex-row items-center justify-between gap-4 w-full md:w-1/3 mb-4 md:mb-0">
-            <div className="flex-1">
-                <Typography variant="caption" className="text-gray-400 uppercase font-bold text-[0.65rem] tracking-wider block mb-1">
-                    Job Title
-                </Typography>
-                <Typography variant="body2" className="text-gray-700 font-medium truncate">
-                    {emp.employee_role || emp.nominee_role || "Employee"}
-                </Typography>
+
+            {/* 2. JOB TITLE COLUMN */}
+            <div className="col-span-3">
+              {/* Label for Mobile only */}
+              <span className="md:hidden text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                Job Title
+              </span>
+              <Typography variant="body2" className="text-gray-700 font-medium truncate">
+                {emp.employee_role || emp.nominee_role || <span className="text-gray-400 italic">Not Assigned</span>}
+              </Typography>
             </div>
-            <div className="flex-1">
-                <Typography variant="caption" className="text-gray-400 uppercase font-bold text-[0.65rem] tracking-wider block mb-1">
-                    Department
-                </Typography>
-                <Typography variant="body2" className="text-gray-700 font-medium">
-                    {emp.employee_dept || emp.nominee_dept || "General"}
-                </Typography>
+
+            {/* 3. DEPARTMENT COLUMN */}
+            <div className="col-span-2">
+              {/* Label for Mobile only */}
+              <span className="md:hidden text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                Department
+              </span>
+              <Chip 
+                label={emp.employee_dept || emp.nominee_dept || "General"}
+                size="small"
+                sx={{ 
+                    bgcolor: '#f3f4f6', 
+                    color: '#4b5563', 
+                    fontWeight: 600, 
+                    fontSize: '0.75rem',
+                    height: '24px',
+                    borderRadius: '6px'
+                }}
+              />
             </div>
-          </div>
- 
-          {/* RIGHT: Actions (Dynamic based on Mode) */}
-          <div className="flex justify-end w-full md:w-auto min-w-[120px]">
-           
-            {/* 1. PROMOTE MODE */}
-            {mode === "promote" && onPromote && (
+
+            {/* 4. ACTIONS COLUMN */}
+            <div className="col-span-2 flex justify-end items-center gap-2">
+              
+              {/* Promote Mode */}
+              {mode === "promote" && onPromote && (
                 <Button
-                    variant="contained"
-                    onClick={() => onPromote(emp)}
-                    startIcon={<School />}
-                    sx={{
-                        bgcolor: '#00A8A8',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: '#008f8f', boxShadow: '0 4px 12px rgba(0,168,168,0.3)' }
-                    }}
+                  variant="contained"
+                  onClick={() => onPromote(emp)}
+                  startIcon={<School />}
+                  size="small"
+                  sx={{
+                    bgcolor: '#00A8A8',
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    '&:hover': { bgcolor: '#008f8f' }
+                  }}
                 >
-                    Promote
+                  Promote
                 </Button>
-            )}
- 
-            {/* 2. VOTE MODE */}
-            {mode === "vote" && onVote && (
+              )}
+
+              {/* Vote Mode */}
+              {mode === "vote" && onVote && (
                 <Button
-                    variant={hasVoted ? "outlined" : "contained"}
-                    disabled={hasVoted}
-                    onClick={() => onVote(emp.id, emp.nominee_name)}
-                    startIcon={<HowToVote />}
-                    sx={{
-                        bgcolor: hasVoted ? 'transparent' : '#00A8A8',
-                        color: hasVoted ? '#94a3b8' : 'white',
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        '&:hover': { bgcolor: '#008f8f' }
-                    }}
+                  variant={hasVoted ? "outlined" : "contained"}
+                  disabled={hasVoted}
+                  onClick={() => onVote(emp.id, emp.nominee_name)}
+                  startIcon={<HowToVote />}
+                  size="small"
+                  sx={{
+                    bgcolor: hasVoted ? 'transparent' : '#00A8A8',
+                    color: hasVoted ? '#94a3b8' : 'white',
+                    borderColor: hasVoted ? '#cbd5e1' : 'transparent',
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    '&:hover': { bgcolor: hasVoted ? 'transparent' : '#008f8f' }
+                  }}
                 >
-                    {hasVoted ? "Voted" : "Vote"}
+                  {hasVoted ? "Voted" : "Vote"}
                 </Button>
-            )}
- 
-            {/* 3. NOMINATE MODE */}
-            {mode === "nominate" && onSelect && (
+              )}
+
+              {/* Nominate Mode */}
+              {mode === "nominate" && onSelect && (
                 <Button
-                    variant="outlined"
-                    onClick={() => onSelect(emp)}
-                    startIcon={<EmojiEvents />}
-                    sx={{
-                        borderColor: '#00A8A8',
-                        color: '#00A8A8',
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        '&:hover': { bgcolor: '#e0f2f1', borderColor: '#008f8f' }
-                    }}
+                  variant="outlined"
+                  onClick={() => onSelect(emp)}
+                  startIcon={<EmojiEvents />}
+                  size="small"
+                  sx={{
+                    borderColor: '#00A8A8',
+                    color: '#00A8A8',
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                    '&:hover': { bgcolor: '#e0f2f1', borderColor: '#008f8f' }
+                  }}
                 >
-                    Nominate
+                  Nominate
                 </Button>
-            )}
- 
-            {/* 4. MANAGE TEAM MODE */}
-            {mode === "manage" && (
+              )}
+
+              {/* Manage Mode */}
+              {mode === "manage" && (
                 <div className="flex gap-1">
-                    {onEdit && (
-                        <Tooltip title="Edit Details">
-                            <IconButton onClick={() => onEdit(emp)} size="small" className="hover:bg-teal-50 text-gray-400 hover:text-teal-600">
-                                <Edit fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    )}
-                    {onRemove && (
-                        <Tooltip title="Remove Member">
-                            <IconButton onClick={() => onRemove(emp)} size="small" className="hover:bg-red-50 text-gray-400 hover:text-red-500">
-                                <Delete fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    )}
+                  {onEdit && (
+                    <Tooltip title="Edit Details">
+                      <IconButton 
+                        onClick={() => onEdit(emp)} 
+                        size="small" 
+                        className="hover:bg-teal-50 text-gray-400 hover:text-teal-600 transition-colors"
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {onRemove && (
+                    <Tooltip title="Remove Member">
+                      <IconButton 
+                        onClick={() => onRemove(emp)} 
+                        size="small" 
+                        className="hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </div>
-            )}
- 
+              )}
+            </div>
+
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
- 
+
 export default EmployeeTable;
- 

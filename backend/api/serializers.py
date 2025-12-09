@@ -52,12 +52,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         # These are the fields your Frontend Context needs
-        fields = ['id', 'username', 'email', 'role', 'employee_id', 'employee_dept', 'employee_role']
+        fields = ['id', 'username', 'email', 'role', 'employee_id', 'employee_dept', 'employee_role', 'location']
        
 class UserNominationListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role']
+        fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role', 'location']
  
 # 2. For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
@@ -84,7 +84,7 @@ class NominationSerializer(serializers.ModelSerializer):
 class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'employee_id', 'employee_dept', 'employee_role', 'role']    
+        fields = ['id', 'username', 'email', 'employee_id', 'employee_dept', 'employee_role', 'role', 'location']    
        
 class FinalistSerializer(serializers.ModelSerializer):
     nominee_name = serializers.CharField(source='nominee.username')

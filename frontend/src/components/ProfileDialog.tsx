@@ -1,19 +1,50 @@
-import { Dialog, Avatar, Typography, IconButton, Chip } from "@mui/material";
-import { Close, Badge, Business, Work, Person } from "@mui/icons-material";
+import { useState, useEffect } from "react";
+import { Dialog, Avatar, Typography, IconButton, Chip, TextField } from "@mui/material";
+import { Close, Badge, Business, Work, Person, LocationOn, Edit, Save } from "@mui/icons-material";
 import type { User } from "../types";
+import { authAPI } from "../api/auth"
+
 
 interface ProfileDialogProps {
   open: boolean;
   onClose: () => void;
   user: User | null;
+  isOwnProfile?: boolean; // 🔥 Pass TRUE if this is the logged-in user
 }
 
-const ProfileDialog = ({ open, onClose, user }: ProfileDialogProps) => {
+const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDialogProps) => {
+  const [isEditingLoc, setIsEditingLoc] = useState(false);
+  const [locationValue, setLocationValue] = useState("");
+  const [displayLocation, setDisplayLocation] = useState("");
+
+  // Sync state when the user prop changes
+  useEffect(() => {
+    if (user) {
+        const loc = user.location || ""; // Handle null/undefined
+        setLocationValue(loc);
+        setDisplayLocation(loc);
+    }
+  }, [user]);
+
   if (!user) return null;
 
-  // SAFE ACCESS: Handle case where username might be missing/loading
   const initial = (user.username || "U").charAt(0).toUpperCase();
   const displayName = user.username || "User";
+
+  const handleSaveLocation = async () => {
+    try {
+        // Call the API to update backend
+        await authAPI.updateProfile({ location: locationValue });
+        
+        // Update UI immediately
+        setDisplayLocation(locationValue);
+        setIsEditingLoc(false);
+        console.log("Location updated successfully!");
+    } catch (error) {
+        console.error("Failed to update location", error);
+        alert("Failed to save location. Please try again.");
+    }
+  };
 
   return (
     <Dialog 
@@ -49,6 +80,49 @@ const ProfileDialog = ({ open, onClose, user }: ProfileDialogProps) => {
             <InfoItem icon={<Badge />} label="Employee ID" value={user.employee_id} />
             <InfoItem icon={<Work />} label="Job Title" value={user.employee_role} />
             <InfoItem icon={<Business />} label="Department" value={user.employee_dept} />
+            
+            {/* 🔥 LOCATION SECTION (UPDATED) */}
+            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 relative group">
+                <div className="text-teal-600 mt-0.5"><LocationOn /></div>
+                <div className="flex-1">
+                    <Typography variant="caption" className="text-gray-500 uppercase font-bold tracking-wide">
+                        Location
+                    </Typography>
+
+                    {isEditingLoc ? (
+                        <div className="flex items-center gap-2 mt-1">
+                            <TextField 
+                                variant="standard" 
+                                size="small" 
+                                value={locationValue}
+                                onChange={(e) => setLocationValue(e.target.value)}
+                                placeholder="City, Country"
+                                autoFocus
+                            />
+                            <IconButton size="small" color="primary" onClick={handleSaveLocation}>
+                                <Save fontSize="small" />
+                            </IconButton>
+                        </div>
+                    ) : (
+                        <Typography variant="body1" className="text-gray-900 font-medium">
+                            {displayLocation || "Not Set"}
+                        </Typography>
+                    )}
+                </div>
+
+                {/* THE PEN BUTTON: Only shows if it's YOUR profile and not already editing */}
+                {isOwnProfile && !isEditingLoc && (
+                    <IconButton 
+                        size="small" 
+                        sx={{ position: 'absolute', right: 4, top: 4 }}
+                        onClick={() => setIsEditingLoc(true)}
+                    >
+                        <Edit fontSize="small" className="text-gray-400 hover:text-teal-600" />
+                    </IconButton>
+                )}
+            </div>
+            {/* ------------------------ */}
+
             <InfoItem icon={<Person />} label="Manager" value={user.manager_name} />
         </div>
       </div>
@@ -56,7 +130,6 @@ const ProfileDialog = ({ open, onClose, user }: ProfileDialogProps) => {
   );
 };
 
-// Helper sub-component
 const InfoItem = ({ icon, label, value }: any) => (
     <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
         <div className="text-teal-600 mt-0.5">{icon}</div>

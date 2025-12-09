@@ -39,6 +39,7 @@ class User(AbstractUser):
     employee_role = models.CharField(max_length=50, blank=True, null=True)
     manager_name = models.CharField(max_length=100, blank=True, null=True, help_text="Reporting Manager")
     email = models.EmailField(unique=True)
+    location = models.CharField(max_length=100, blank=True, null=True, help_text="Office Location")
     manager = models.ForeignKey(
         'self',
         null=True,

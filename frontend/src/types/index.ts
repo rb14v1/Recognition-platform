@@ -15,6 +15,7 @@ export interface User {
     username: string;
     email: string;
     role: string;
+    location?: string;
     employee_id: string;
     employee_dept?: string; // Optional until backend confirms
     employee_role?: string; // The job title (e.g. "Developer")

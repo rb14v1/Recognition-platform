@@ -23,6 +23,15 @@ export interface NominationPayload {
     nominee: number; // ID of the user being nominated
     reason: string;
 }
+
+const buildQueryParams = (params: Record<string, string | undefined>) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value) query.append(key, value);
+    });
+    return query.toString();
+};
+
 export const authAPI = {
     register: async (data: RegisterPayload) => {
         return await api.post('register/', data);
@@ -40,15 +49,21 @@ export const authAPI = {
     getMe: async () => {
         return await api.get('me/');
     },
+
+    updateProfile: async (data: { location?: string }) => {
+        // We use PATCH because we are only updating one field
+        return await api.patch('me/', data);
+    },
  
-    getNominationOptions: async (filters?: { search?: string, dept?: string, role?: string }) => {
-        // Build query string dynamically
-        const params = new URLSearchParams();
-        if (filters?.search) params.append('search', filters.search);
-        if (filters?.dept) params.append('dept', filters.dept);
-        if (filters?.role) params.append('role', filters.role);
-       
-        return await api.get(`nominate/list/?${params.toString()}`);
+    getNominationOptions: async (filters?: { search?: string, dept?: string, role?: string, location?: string }) => {
+        const queryString = buildQueryParams({
+            search: filters?.search,
+            dept: filters?.dept,
+            role: filters?.role,
+            location: filters?.location
+        });
+        
+        return await api.get(`nominate/list/?${queryString}`);
     },
  
     // 1. Submit New
@@ -74,8 +89,15 @@ export const authAPI = {
     },
    
     // Search unassigned employees to add to team
-    searchUnassigned: async (query: string, type: 'name' | 'id') => {
-        return await api.get(`coordinator/team/add/?search=${query}&type=${type}`);
+    searchUnassigned: async (query: string, filters?: { dept?: string, role?: string, location?: string }) => {
+        const queryString = buildQueryParams({
+            search: query,
+            dept: filters?.dept,
+            role: filters?.role,
+            location: filters?.location
+        });
+
+        return await api.get(`coordinator/team/add/?${queryString}`);
     },
  
     // Link selected employees to the current coordinator
