@@ -18,6 +18,9 @@ import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar"; 
+import PaginationControl from "../components/PaginationControl"; // 🔥 IMPORT
+
+const ITEMS_PER_PAGE = 5;
 
 const Nominate = () => {
   const navigate = useNavigate();
@@ -25,6 +28,9 @@ const Nominate = () => {
   // Data
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
 
   // Nomination Status
   const [hasNominated, setHasNominated] = useState(false);
@@ -112,6 +118,11 @@ const Nominate = () => {
     [employees]
   );
 
+  // --- 🔥 Reset Page on Filter Change ---
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, searchType, filters]);
+
   // --- Filter Logic ---
   const filteredEmployees = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -133,6 +144,14 @@ const Nominate = () => {
       return matchesSearch && matchesDept && matchesRole && matchesLoc;
     });
   }, [employees, searchTerm, searchType, filters]);
+
+  // --- 🔥 Pagination Logic ---
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    return filteredEmployees.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredEmployees, page]);
+
+  const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
 
   // Handlers
   const handleSelectClick = (emp: any) => {
@@ -190,7 +209,7 @@ const Nominate = () => {
     }
   };
 
-  // --- Reusable Row Component to ensure exact look match ---
+  // --- Reusable Row Component ---
   const EmployeeRow = ({ emp, type }: { emp: any, type: 'nominate' | 'manage' }) => (
     <div className="group flex flex-col md:flex-row items-center p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md hover:border-teal-300 transition-all duration-200">
         
@@ -210,7 +229,6 @@ const Nominate = () => {
                 <Typography fontWeight="bold" className="text-gray-900 leading-tight">
                     {emp.username || emp.nominee_name}
                 </Typography>
-                {/* ID shown below name on mobile */}
                 <Typography variant="caption" className="md:hidden text-gray-400 font-mono">
                      {emp.employee_id}
                 </Typography>
@@ -245,7 +263,7 @@ const Nominate = () => {
             </div>
 
             {/* RIGHT: Actions */}
-            <div className="pl-4 border-l border-gray-100 flex gap-2">
+            <div className="pl-4 w-[120px] flex justify-end gap-2">
                 {type === 'nominate' ? (
                      <Button
                         variant="outlined"
@@ -291,7 +309,6 @@ const Nominate = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
 
-      {/* Back Button */}
       <div className="w-full flex justify-start">
         <Button
           startIcon={<ArrowBack />}
@@ -336,14 +353,25 @@ const Nominate = () => {
             <CircularProgress sx={{ color: '#00A8A8' }} />
           </div>
         ) : hasNominated && mySelection ? (
-          // VIEW FOR: Already Nominated (Single Row)
           <div className="flex flex-col gap-4">
              <EmployeeRow emp={mySelection} type="manage" />
           </div>
         ) : (
-          // VIEW FOR: Nomination List (Multiple Rows)
-          <div className="flex flex-col gap-4">
-            {filteredEmployees.map(emp => (
+          <div className="flex flex-col gap-3">
+            
+            {/* HEADER ROW */}
+            <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <div className="w-1/4 pl-2">Employee Details</div>
+                <div className="flex-1 flex items-center gap-4">
+                    <div className="w-20">ID</div>
+                    <div className="flex-1">Job Title</div>
+                    <div className="w-32">Department</div>
+                </div>
+                <div className="w-[120px] text-right pr-2">Action</div>
+            </div>
+
+            {/* List Rows */}
+            {paginatedEmployees.map(emp => (
                 <EmployeeRow key={emp.id} emp={emp} type="nominate" />
             ))}
 
@@ -352,11 +380,18 @@ const Nominate = () => {
                 <Typography>No employees found matching your criteria.</Typography>
               </div>
             )}
+
+            {/* 🔥 PAGINATION CONTROL */}
+            <PaginationControl 
+                count={totalPages} 
+                page={page} 
+                onChange={(_, v) => setPage(v)} 
+            />
           </div>
         )}
       </div>
 
-      {/* ---------------- DIALOGS ---------------- */}
+      {/* ---------------- DIALOGS (Existing logic) ---------------- */}
       <Dialog
         open={nominateDialogOpen}
         onClose={() => setNominateDialogOpen(false)}

@@ -1,20 +1,35 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Typography, Button, TextField, Dialog, DialogTitle, DialogContent,
-  DialogActions, CircularProgress, InputAdornment
+  DialogActions, CircularProgress, Avatar, Chip, Tooltip
 } from "@mui/material";
-import { Group, Edit, Search } from "@mui/icons-material";
+import { Group, Edit, ArrowBack } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
-import { Avatar } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import SearchBar from "../components/SearchBar";
+import PaginationControl from "../components/PaginationControl"; // 🔥 IMPORT
+
+const ITEMS_PER_PAGE = 6;
 
 const TeamManagement = () => {
+  const navigate = useNavigate();
+
+  // Data
   const [team, setTeam] = useState<any[]>([]);
-  const [filteredTeam, setFilteredTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Search
+  // Pagination State
+  const [page, setPage] = useState(1);
+
+  // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"name" | "empId">("name");
+  const [filters, setFilters] = useState({
+    dept: "All",
+    role: "All",
+    location: "All"
+  });
 
   // Edit Dialog State
   const [openEdit, setOpenEdit] = useState(false);
@@ -26,26 +41,68 @@ const TeamManagement = () => {
   const loadTeam = async () => {
     setLoading(true);
     try {
+      // Fetch ALL team members initially
       const res = await authAPI.getMyTeam();
       setTeam(res.data);
-      setFilteredTeam(res.data);
     } catch (e) {
       console.error(e);
+      toast.error("Failed to load team");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔍 Search Handler
-  const handleSearch = () => {
-    const term = searchTerm.toLowerCase();
-    const results = team.filter((e) =>
-      e.username.toLowerCase().includes(term)
-    );
-    setFilteredTeam(results);
-  };
+  // --- DERIVED OPTIONS (For Dropdowns) ---
+  const departments = useMemo(() => 
+    ["All", ...Array.from(new Set(team.map(m => m.employee_dept).filter(Boolean)))], 
+    [team]
+  );
+  const jobRoles = useMemo(() => 
+    ["All", ...Array.from(new Set(team.map(m => m.employee_role).filter(Boolean)))], 
+    [team]
+  );
+  const locations = useMemo(() => 
+    ["All", ...Array.from(new Set(team.map(m => m.location).filter(Boolean)))], 
+    [team]
+  );
 
-  // Open Edit Modal
+  // --- 🔥 Reset Page on Filter Change ---
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, searchType, filters]);
+
+  // --- CLIENT-SIDE FILTERING ---
+  const filteredTeam = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+
+    return team.filter((m) => {
+      const username = m.username?.toLowerCase() || "";
+      const empId = m.employee_id?.toLowerCase() || "";
+      const dept = m.employee_dept || "";
+      const job = m.employee_role || "";
+      const loc = m.location || "";
+
+      const matchesSearch = searchType === "name" 
+        ? username.includes(q) 
+        : empId.includes(q);
+
+      const matchesDept = filters.dept === "All" || dept === filters.dept;
+      const matchesRole = filters.role === "All" || job === filters.role;
+      const matchesLoc = filters.location === "All" || loc === filters.location;
+
+      return matchesSearch && matchesDept && matchesRole && matchesLoc;
+    });
+  }, [team, searchTerm, searchType, filters]);
+
+  // --- 🔥 Pagination Logic ---
+  const paginatedTeam = useMemo(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    return filteredTeam.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredTeam, page]);
+
+  const totalPages = Math.ceil(filteredTeam.length / ITEMS_PER_PAGE);
+
+  // Actions
   const handleEditClick = (member: any) => {
     setSelectedMember(member);
     setEditForm({
@@ -55,7 +112,6 @@ const TeamManagement = () => {
     setOpenEdit(true);
   };
 
-  // Submit Update
   const handleUpdate = async () => {
     try {
       await authAPI.updateTeamMember(selectedMember.id, editForm);
@@ -68,139 +124,148 @@ const TeamManagement = () => {
   };
 
   return (
-    <div className="animate-fadeIn max-w-7xl mx-auto">
+    <div className="animate-fadeIn max-w-7xl mx-auto pb-20 p-6">
 
-      {/* Header */}
-      <div className="mb-8">
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          className="text-gray-800 flex items-center gap-2"
-        >
-          <Group className="text-teal-600" /> My Team
-        </Typography>
-        <Typography variant="body2" color="textSecondary">
-          Manage your direct reports ({team.length} members)
-        </Typography>
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6">
+        <div>
+            <Button
+                startIcon={<ArrowBack />}
+                onClick={() => navigate("/dashboard")}
+                sx={{ mb: 2, color: "text.secondary", textTransform: "none" }}
+            >
+                Back to Dashboard
+            </Button>
+            <Typography variant="h5" fontWeight="bold" className="text-gray-800 flex items-center gap-2">
+                <Group className="text-teal-600" /> My Team
+            </Typography>
+            <Typography variant="body2" color="textSecondary" className="mt-1">
+                Manage your direct reports ({team.length} members)
+            </Typography>
+        </div>
       </div>
 
       {/* SEARCH BAR */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <SearchBar 
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchType={searchType}
+        onSearchTypeChange={setSearchType}
+        filters={filters}
+        onFilterChange={(key, val) => setFilters(prev => ({ ...prev, [key]: val }))}
+        options={{
+            departments,
+            roles: jobRoles,
+            locations
+        }}
+      />
 
-        <TextField
-          placeholder="Search employee name..."
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search className="text-gray-400" />
-              </InputAdornment>
-            ),
-            sx: {
-              borderRadius: 2,
-              background: "#fff",
-              "& fieldset": { border: "1px solid #e2e2e2" }
-            }
-          }}
-        />
-
-        <Button
-          variant="contained"
-          onClick={handleSearch}
-          startIcon={<Search />}
-          sx={{
-            bgcolor: "#00A8A8",
-            "&:hover": { bgcolor: "#008f8f" },
-            px: 5,
-            py: 1.4,
-            borderRadius: 2,
-            fontWeight: "bold"
-          }}
-        >
-          Search
-        </Button>
-      </div>
-
-      {/* CONTENT AREA */}
+      {/* LIST CONTENT */}
       {loading ? (
         <div className="flex justify-center p-12">
           <CircularProgress sx={{ color: "#00A8A8" }} />
         </div>
-      ) : filteredTeam.length === 0 ? (
-        <div className="text-center text-gray-500 py-10">
-          No team members found.
-        </div>
       ) : (
-        // ROW-LIST UI (Like Promote Page)
-        <div className="space-y-4">
-          {filteredTeam.map((m) => (
-            <div
-              key={m.id}
-              className="
-                flex items-center justify-between
-                bg-white shadow-sm border border-gray-200
-                rounded-2xl px-6 py-4
-              "
-            >
-              {/* Left Section */}
-              <div className="flex items-center gap-5 flex-1">
-
-                <Avatar
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    bgcolor: "#00A8A8",
-                    color: "white",
-                    fontWeight: "bold",
-                    fontSize: "1.1rem",
-                  }}
-                >
-                  {m.username?.charAt(0)?.toUpperCase()}
-                </Avatar>
-
-                {/* Details Row */}
-                <div className="flex items-center gap-10">
-
-                  <Typography className="text-gray-900 font-semibold min-w-[120px] capitalize">
-                    {m.username}
-                  </Typography>
-
-                  <Typography className="text-gray-700 min-w-[50px]">
-                    {m.employee_id}
-                  </Typography>
-
-                  <Typography className="text-gray-700 min-w-[150px] capitalize">
-                    {m.employee_role}
-                  </Typography>
-
-                  <Typography className="text-gray-700 min-w-[140px] capitalize">
-                    {m.employee_dept}
-                  </Typography>
-
+        <div className="flex flex-col gap-3">
+            
+            {/* 🔥 HEADER ROW */}
+            <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <div className="w-1/3 pl-2">Employee Details</div>
+                <div className="flex-1 flex items-center gap-4">
+                    <div className="w-20">ID</div>
+                    <div className="flex-1">Job Title</div>
+                    <div className="w-32">Department</div>
                 </div>
-              </div>
-
-              {/* Edit Button */}
-              <Button
-                variant="contained"
-                startIcon={<Edit />}
-                onClick={() => handleEditClick(m)}
-                sx={{
-                  bgcolor: "#00A8A8",
-                  "&:hover": { bgcolor: "#008f8f" },
-                  px: 4,
-                  py: 1.2,
-                  borderRadius: 2,
-                  fontWeight: "bold",
-                }}
-              >
-                Edit
-              </Button>
+                <div className="w-[120px] text-right pr-4">Action</div>
             </div>
-          ))}
+
+            {/* ROWS */}
+            {paginatedTeam.map((m) => (
+                <div
+                    key={m.id}
+                    className="group flex flex-col md:flex-row items-center p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-teal-300 transition-all duration-200"
+                >
+                    {/* LEFT: Identity */}
+                    <div className="flex items-center gap-4 w-full md:w-1/3 mb-2 md:mb-0">
+                        <Avatar
+                            sx={{
+                                width: 48, height: 48,
+                                bgcolor: "#00A8A8", color: "white",
+                                fontWeight: "bold",
+                            }}
+                        >
+                            {m.username?.charAt(0)?.toUpperCase()}
+                        </Avatar>
+                        <div>
+                            <Typography fontWeight="bold" className="text-gray-900 leading-tight">
+                                {m.username}
+                            </Typography>
+                            <Typography variant="caption" className="md:hidden text-gray-400 font-mono">
+                                {m.employee_id}
+                            </Typography>
+                        </div>
+                    </div>
+
+                    {/* MIDDLE: Details */}
+                    <div className="flex items-center justify-between w-full md:flex-1 gap-4">
+                        {/* ID Column */}
+                        <div className="w-20 text-sm text-gray-500 font-mono hidden md:block">
+                            {m.employee_id}
+                        </div>
+
+                        {/* Role Column */}
+                        <div className="flex-1 text-sm font-medium text-gray-700">
+                            {m.employee_role || <span className="text-gray-400 italic">No Title</span>}
+                        </div>
+
+                        {/* Dept Column */}
+                        <div className="w-32">
+                            <Chip 
+                                label={m.employee_dept || "General"} 
+                                size="small"
+                                sx={{ 
+                                    bgcolor: '#f3f4f6', color: '#4b5563', 
+                                    fontWeight: 600, borderRadius: '6px'
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Action */}
+                    <div className="w-full md:w-[120px] flex justify-end mt-3 md:mt-0">
+                        <Tooltip title="Edit Details">
+                            <Button
+                                variant="outlined"
+                                startIcon={<Edit />}
+                                size="small"
+                                onClick={() => handleEditClick(m)}
+                                sx={{
+                                    borderColor: '#00A8A8',
+                                    color: '#00A8A8',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    '&:hover': { bgcolor: '#e0f2f1', borderColor: '#008f8f' }
+                                }}
+                            >
+                                Edit
+                            </Button>
+                        </Tooltip>
+                    </div>
+                </div>
+            ))}
+
+            {filteredTeam.length === 0 && (
+                <div className="text-center py-12 border border-dashed rounded-xl bg-gray-50 text-gray-500">
+                    No team members match your search criteria.
+                </div>
+            )}
+
+            {/* 🔥 PAGINATION CONTROL */}
+            <PaginationControl 
+                count={totalPages} 
+                page={page} 
+                onChange={(_, v) => setPage(v)} 
+            />
         </div>
       )}
 

@@ -65,22 +65,35 @@ class PromotableUsersView(generics.ListAPIView):
         user = self.request.user
         my_level = user.get_role_level()
        
-        # Logic: Get everyone whose role level is LESS than mine
-        # We need to manually filter because role_level isn't a DB field, it's a method
-        # But we can map roles to the query.
-       
-        # Get list of roles strictly lower than mine
+        # 1. Hierarchy Logic: Only show people with lower rank
         allowed_roles = [
             role for role, level in user.ROLE_HIERARCHY.items()
             if level < my_level
         ]
-       
         queryset = User.objects.filter(role__in=allowed_roles).exclude(id=user.id)
        
-        # Search filter
-        search_query = self.request.query_params.get('search', None)
+        # 2. Search (Name OR ID)
+        search_query = self.request.query_params.get('search', '').strip()
         if search_query:
-            queryset = queryset.filter(username__icontains=search_query)
+            queryset = queryset.filter(
+                Q(username__icontains=search_query) | 
+                Q(employee_id__icontains=search_query)
+            )
+
+        # 3. Filter: Department
+        dept = self.request.query_params.get('dept')
+        if dept:
+            queryset = queryset.filter(employee_dept__iexact=dept)
+
+        # 4. Filter: Job Role
+        role = self.request.query_params.get('role')
+        if role:
+            queryset = queryset.filter(employee_role__iexact=role)
+
+        # 5. Filter: Location
+        loc = self.request.query_params.get('location')
+        if loc:
+            queryset = queryset.filter(location__iexact=loc)
            
         return queryset        
        
@@ -228,8 +241,33 @@ class CoordinatorTeamView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
     def get(self, request):
-        team = request.user.team_members.all()
-        serializer = TeamMemberSerializer(team, many=True)
+        # Base: Get direct reports
+        queryset = request.user.team_members.all()
+ 
+        # 1. Unified Search (Name OR ID)
+        search_query = request.query_params.get('search', '').strip()
+        if search_query:
+            queryset = queryset.filter(
+                Q(username__icontains=search_query) | 
+                Q(employee_id__icontains=search_query)
+            )
+
+        # 2. Filter: Department
+        dept = request.query_params.get('dept')
+        if dept:
+            queryset = queryset.filter(employee_dept__iexact=dept)
+
+        # 3. Filter: Job Role
+        role = request.query_params.get('role')
+        if role:
+            queryset = queryset.filter(employee_role__iexact=role)
+
+        # 4. Filter: Location
+        loc = request.query_params.get('location')
+        if loc:
+            queryset = queryset.filter(location__iexact=loc)
+ 
+        serializer = TeamMemberSerializer(queryset, many=True)
         return Response(serializer.data)
  
     def post(self, request):
