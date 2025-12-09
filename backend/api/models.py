@@ -40,10 +40,10 @@ class User(AbstractUser):
     manager_name = models.CharField(max_length=100, blank=True, null=True, help_text="Reporting Manager")
     email = models.EmailField(unique=True)
     manager = models.ForeignKey(
-        'self', 
-        null=True, 
-        blank=True, 
-        on_delete=models.SET_NULL, 
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='team_members'
     )
     objects = CustomUserManager()
@@ -84,19 +84,19 @@ class User(AbstractUser):
             return False, "You cannot modify the role of someone who outranks you or is your peer."
  
         return True, "Allowed"
-
+ 
 class Nomination(models.Model):
     nominator = models.ForeignKey(
-        'User', 
-        on_delete=models.CASCADE, 
+        'User',
+        on_delete=models.CASCADE,
         related_name='nominations_made'
     )
     nominee = models.ForeignKey(
-        'User', 
-        on_delete=models.CASCADE, 
+        'User',
+        on_delete=models.CASCADE,
         related_name='nominations_received'
     )
-    
+   
     STATUS_CHOICES = [
         ('SUBMITTED', 'Submitted'),             # Step 1: Pending Coordinator
         ('APPROVED', 'Coordinator Approved'),   # Step 2: Pending Committee
@@ -108,15 +108,30 @@ class Nomination(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUBMITTED')
     nominator_name = models.CharField(max_length=100, blank=True, null=True)
     nominee_name = models.CharField(max_length=100, blank=True, null=True)
-
+ 
     reason = models.TextField(blank=True, null=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
-
+ 
     class Meta:
         # This constraint ensures a user can only nominate ONE person total.
         # If they try to nominate again, the DB will throw an error.
-        unique_together = ('nominator',) 
-
+        unique_together = ('nominator',)
+ 
     def __str__(self):
         return f"{self.nominator.username} -> {self.nominee.username}"    
  
+class Vote(models.Model):
+    voter = models.OneToOneField(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='vote_cast'
+    )
+    nomination = models.ForeignKey(
+        Nomination,
+        on_delete=models.CASCADE,
+        related_name='votes'
+    )
+    voted_at = models.DateTimeField(auto_now_add=True)
+ 
+    def __str__(self):
+        return f"{self.voter.username} voted for {self.nomination.nominee.username}"

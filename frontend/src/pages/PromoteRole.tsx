@@ -1,105 +1,262 @@
 import { useState, useEffect } from "react";
-import { Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, RadioGroup, FormControlLabel, Radio, Box } from "@mui/material";
-import { TrendingUp, School } from "@mui/icons-material";
+import {
+    Typography, Button, Dialog, DialogTitle, DialogContent,
+    DialogActions, FormControl, RadioGroup, FormControlLabel,
+    Radio, Box, TextField, InputAdornment
+} from "@mui/material";
+import { TrendingUp, School, Search } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
-import toast from 'react-hot-toast';
-import EmployeeCard from "../components/EmployeeCard";
+import toast from "react-hot-toast";
+import { Avatar } from "@mui/material";
 
-const PromotePage = () => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [targetRole, setTargetRole] = useState("");
+const PromoteRole = () => {
+    const [users, setUsers] = useState<any[]>([]);
+    const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [targetRole, setTargetRole] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => { loadUsers(); }, []);
+    useEffect(() => { loadUsers(); }, []);
 
-  const loadUsers = async () => {
-    try {
-      const res = await authAPI.getPromotableUsers();
-      setUsers(res.data);
-    } catch(e) { console.error(e); }
-  };
+    const loadUsers = async () => {
+        try {
+            const res = await authAPI.getPromotableUsers();
+            const sorted = [...res.data].sort((a, b) =>
+                a.username.localeCompare(b.username)
+            );
 
-  const handlePromote = async () => {
-    if (!selectedUser || !targetRole) return;
-    try {
-        await authAPI.promote({
-            user_id_to_promote: selectedUser.id,
-            new_role: targetRole
-        });
-        toast.success(`${selectedUser.username} promoted successfully!`);
-        setOpenDialog(false);
-        loadUsers(); // Refresh list
-    } catch (e: any) {
-        toast.error(e.response?.data?.error || "Promotion failed");
-    }
-  };
+            setUsers(sorted);
+            setFilteredUsers(sorted);
 
-  return (
-    <div className="animate-fadeIn max-w-7xl mx-auto">
-        <div className="mb-8">
-            <Typography variant="h5" fontWeight="bold" className="text-gray-800 flex items-center gap-2">
-                <TrendingUp className="text-orange-600"/> Promote Employees
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-                Elevate eligible employees to higher roles. You can only promote up to your own level.
-            </Typography>
-        </div>
+        } catch (e) { console.error(e); }
+    };
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {users.map(u => (
-                <div key={u.id} className="relative">
-                    <EmployeeCard emp={u} />
-                    <Button 
-                        fullWidth 
-                        variant="contained" 
-                        color="warning"
-                        startIcon={<School />}
-                        className="mt-2"
-                        sx={{ mt: 2, borderRadius: 2 }}
-                        onClick={() => { setSelectedUser(u); setOpenDialog(true); }}
-                    >
-                        Promote
-                    </Button>
-                </div>
-            ))}
-        </div>
+    // 🔍 SEARCH FUNCTION
+    const handleSearch = () => {
+        const term = searchTerm.toLowerCase();
+        const results = users.filter((u) =>
+            u.username.toLowerCase().includes(term)
+        );
+        setFilteredUsers(results);
+    };
 
-        {/* Promotion Dialog */}
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="xs">
-            <DialogTitle>Promote {selectedUser?.username}</DialogTitle>
-            <DialogContent dividers>
-                <Typography variant="body2" className="mb-4 text-gray-500">
-                    Current Role: <b>{selectedUser?.role}</b>
+    const handlePromote = async () => {
+        if (!selectedUser || !targetRole) return;
+        try {
+            await authAPI.promote({
+                user_id_to_promote: selectedUser.id,
+                new_role: targetRole
+            });
+            toast.success(`${selectedUser.username} promoted successfully!`);
+            setOpenDialog(false);
+            loadUsers();
+        } catch (e: any) {
+            toast.error(e.response?.data?.error || "Promotion failed");
+        }
+    };
+
+    return (
+        <div className="animate-fadeIn max-w-6xl mx-auto">
+
+            {/* HEADER */}
+            <div className="mb-8">
+                <Typography
+                    variant="h5"
+                    fontWeight="bold"
+                    className="text-gray-800 flex items-center gap-2"
+                >
+                    <TrendingUp sx={{ color: "#00A8A8" }} /> Promote Employees
                 </Typography>
-                
-                <Typography fontWeight="bold" className="mb-2">Select New Role:</Typography>
-                <FormControl component="fieldset">
-                    <RadioGroup value={targetRole} onChange={(e) => setTargetRole(e.target.value)}>
-                        <FormControlLabel 
-                            value="COORDINATOR" 
-                            control={<Radio color="warning" />} 
-                            label={
-                                <Box>
-                                    <Typography fontWeight="bold" variant="body2">Coordinator</Typography>
-                                    <Typography variant="caption" className="text-gray-500">Can manage teams & approvals</Typography>
-                                </Box>
-                            } 
-                            className="mb-2"
-                        />
-                        {/* Add more roles here if the backend logic allows (e.g. COMMITTEE) */}
-                    </RadioGroup>
-                </FormControl>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-                <Button variant="contained" color="warning" onClick={handlePromote} disabled={!targetRole}>
-                    Confirm Promotion
+                <Typography variant="body2" color="textSecondary">
+                    Elevate eligible employees to higher roles. You can only promote up to your own level.
+                </Typography>
+            </div>
+
+            {/* 🔍 SEARCH BAR */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-3">
+
+                <TextField
+                    placeholder="Search employee by name..."
+                    fullWidth
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <Search className="text-gray-400" />
+                            </InputAdornment>
+                        ),
+                        sx: {
+                            borderRadius: 2,
+                            background: "#fff",
+                            "& fieldset": { border: "1px solid #e2e2e2" },
+                            paddingLeft: "8px"
+                        }
+                    }}
+                />
+
+                <Button
+                    variant="contained"
+                    onClick={handleSearch}
+                    startIcon={<Search />}
+                    sx={{
+                        bgcolor: "#00A8A8",
+                        "&:hover": { bgcolor: "#008f8f" },
+                        px: 5,
+                        py: 1.4,
+                        borderRadius: 2,
+                        fontWeight: "bold"
+                    }}
+                >
+                    Search
                 </Button>
-            </DialogActions>
-        </Dialog>
-    </div>
-  );
+
+            </div>
+
+            {/* EMPLOYEE LIST */}
+            {filteredUsers.length === 0 ? (
+                <Typography className="text-gray-500 text-center py-10">
+                    No employees match your search.
+                </Typography>
+            ) : (
+                <div className="space-y-4">
+                    {filteredUsers.map((u) => (
+                        <div
+                            key={u.id}
+                            className="
+                                flex items-center justify-between 
+                                bg-white shadow-sm border border-gray-200 
+                                rounded-2xl px-6 py-4
+                            "
+                        >
+                            {/* LEFT SIDE — Avatar + info */}
+                            <div className="flex items-center gap-5 flex-1">
+
+                                <Avatar
+                                    sx={{
+                                        width: 48,
+                                        height: 48,
+                                        bgcolor: "#00A8A8",
+                                        color: "white",
+                                        fontWeight: "bold",
+                                        fontSize: "1.1rem",
+                                    }}
+                                >
+                                    {u.username?.charAt(0)?.toUpperCase()}
+                                </Avatar>
+
+                                {/* DETAILS ROW — PERFECT ALIGNMENT */}
+                                <div className="flex items-center gap-10">
+
+                                    {/* NAME */}
+                                    <Typography className="text-gray-900 font-semibold capitalize w-[140px] truncate">
+                                        {u.username}
+                                    </Typography>
+
+                                    {/* EMPLOYEE ID */}
+                                    <Typography className="text-gray-700 font-medium w-[70px]">
+                                        {u.employee_id}
+                                    </Typography>
+
+                                    {/* ROLE */}
+                                    <Typography className="text-gray-700 font-medium capitalize w-[220px] truncate">
+                                        {u.employee_role}
+                                    </Typography>
+
+                                    {/* DEPARTMENT */}
+                                    <Typography className="text-gray-700 font-medium capitalize w-[160px] truncate">
+                                        {u.employee_dept}
+                                    </Typography>
+
+                                </div>
+                            </div>
+
+                            {/* RIGHT SIDE — Promote Button */}
+                            <Button
+                                variant="contained"
+                                startIcon={<School />}
+                                onClick={() => { setSelectedUser(u); setOpenDialog(true); }}
+                                sx={{
+                                    bgcolor: "#00A8A8",
+                                    "&:hover": { bgcolor: "#008f8f" },
+                                    px: 4,
+                                    py: 1.2,
+                                    borderRadius: 2,
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                Promote
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* PROMOTION DIALOG */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="xs">
+                <DialogTitle>Promote {selectedUser?.username}</DialogTitle>
+
+                <DialogContent dividers>
+                    <Typography variant="body2" className="mb-4 text-gray-500">
+                        Current Role: <b>{selectedUser?.role}</b>
+                    </Typography>
+
+                    <Typography fontWeight="bold" className="mb-2">
+                        Select New Role:
+                    </Typography>
+
+                    <FormControl fullWidth>
+                        <RadioGroup
+                            value={targetRole}
+                            onChange={(e) => setTargetRole(e.target.value)}
+                        >
+                            <FormControlLabel
+                                value="COORDINATOR"
+                                control={
+                                    <Radio
+                                        sx={{
+                                            color: "#00A8A8",
+                                            "&.Mui-checked": { color: "#00A8A8" }
+                                        }}
+                                    />
+                                }
+                                label={
+                                    <Box>
+                                        <Typography fontWeight="bold" variant="body2">
+                                            Coordinator
+                                        </Typography>
+                                        <Typography variant="caption" className="text-gray-500">
+                                            Can manage teams & approvals
+                                        </Typography>
+                                    </Box>
+                                }
+                                className="mb-2"
+                            />
+
+                        </RadioGroup>
+                    </FormControl>
+                </DialogContent>
+
+                <DialogActions>
+                    <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+
+                    <Button
+                        variant="contained"
+                        disabled={!targetRole}
+                        onClick={handlePromote}
+                        sx={{
+                            bgcolor: "#00A8A8",
+                            "&:hover": { bgcolor: "#008f8f" }
+                        }}
+                    >
+                        Confirm Promotion
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </div>
+    );
 };
 
-export default PromotePage;
+export default PromoteRole;

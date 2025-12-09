@@ -1,47 +1,48 @@
+// src/pages/Nominate.tsx
 import { useState, useEffect } from "react";
 import {
-  TextField, Select, MenuItem, Typography, Button, 
-  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, 
+  TextField, Select, MenuItem, Typography, Button,
+  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
   InputAdornment, FormControl, InputLabel, IconButton, Avatar
 } from "@mui/material";
-import { Search, Warning, Close, ArrowBack } from "@mui/icons-material"; // Added ArrowBack
+import { Search, Warning, Close, ArrowBack } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
-import EmployeeCard from "../components/EmployeeCard"; 
-
+import EmployeeTable from "../components/EmployeeTable"; // 👈 USING THE NEW TABLE
+ 
 const Nominate = () => {
   const navigate = useNavigate();
-
+ 
   // --- Data States ---
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+ 
   // --- Status States ---
   const [hasNominated, setHasNominated] = useState(false);
   const [mySelection, setMySelection] = useState<any | null>(null);
   const [savedReason, setSavedReason] = useState("");
-
+ 
   // --- Filter States ---
   const [searchTerm, setSearchTerm] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [roleFilter, setRoleFilter] = useState("All");
-
+ 
   // --- Action States ---
   const [selectedEmp, setSelectedEmp] = useState<any | null>(null);
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  
+ 
   // --- Dialogs ---
   const [nominateDialogOpen, setNominateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
-
+ 
   // 1. Initial Data Fetch
   useEffect(() => {
     loadPageData();
   }, []);
-
+ 
   const loadPageData = async () => {
     setLoading(true);
     try {
@@ -49,12 +50,12 @@ const Nominate = () => {
         authAPI.getNominationStatus(),
         authAPI.getNominationOptions()
       ]);
-
+ 
       setHasNominated(statusRes.data.has_nominated);
       setMySelection(statusRes.data.nominee);
       setSavedReason(statusRes.data.reason || "");
       setEmployees(listRes.data);
-
+ 
     } catch (error) {
       console.error(error);
       toast.error("Failed to load data");
@@ -62,40 +63,40 @@ const Nominate = () => {
       setLoading(false);
     }
   };
-
+ 
   // 2. Filter Logic
   const departments = ["All", ...new Set(employees.map(e => e.employee_dept).filter(Boolean))];
-  const roles = ["All", ...new Set(employees.map(e => e.employee_role).filter(Boolean))]; 
-
+  const roles = ["All", ...new Set(employees.map(e => e.employee_role).filter(Boolean))];
+ 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.username.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDept = deptFilter === "All" || emp.employee_dept === deptFilter;
     const matchesRole = roleFilter === "All" || emp.employee_role === roleFilter;
     return matchesSearch && matchesDept && matchesRole;
   });
-
+ 
   // 3. Handlers
-  const handleCardClick = (emp: any) => {
-    if (hasNominated) return; 
+  const handleSelectClick = (emp: any) => {
+    if (hasNominated) return;
     setSelectedEmp(emp);
     setMode("create");
-    setReason(""); 
+    setReason("");
     setNominateDialogOpen(true);
   };
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedEmp(mySelection);
+ 
+  // Updated to accept 'emp' directly from the Table component
+  const handleEditClick = (emp: any) => {
+    setSelectedEmp(emp); // Use the passed employee object
     setMode("edit");
-    setReason(savedReason); 
+    setReason(savedReason);
     setNominateDialogOpen(true);
   };
-
-  const handleRemoveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+ 
+  // Updated to accept 'emp' directly from the Table component
+  const handleRemoveClick = (emp: any) => {
     setDeleteDialogOpen(true);
   };
-
+ 
   const handleSubmit = async () => {
     if (!reason.trim()) return;
     setSubmitting(true);
@@ -108,14 +109,14 @@ const Nominate = () => {
           toast.success("Nomination Updated!");
       }
       setNominateDialogOpen(false);
-      loadPageData(); 
+      loadPageData();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Action failed");
     } finally {
       setSubmitting(false);
     }
   };
-
+ 
   const handleConfirmDelete = async () => {
     setSubmitting(true);
     try {
@@ -132,19 +133,19 @@ const Nominate = () => {
         setSubmitting(false);
     }
   };
-
+ 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
-      
-      <div className="max-w-7xl mx-auto mb-8">
-        
-        {/* NEW: Back to Dashboard Button */}
-        <Button 
-            startIcon={<ArrowBack />} 
+     
+      <div className="max-w-5xl mx-auto mb-8">
+       
+        {/* Back Button */}
+        <Button
+            startIcon={<ArrowBack />}
             onClick={() => navigate('/dashboard')}
-            sx={{ 
-                mb: 3, 
-                color: 'text.secondary', 
+            sx={{
+                mb: 3,
+                color: 'text.secondary',
                 textTransform: 'none',
                 fontWeight: 500,
                 "&:hover": { backgroundColor: "rgba(17, 87, 17, 0.04)", color: "text.primary" }
@@ -152,24 +153,24 @@ const Nominate = () => {
         >
             Back to Dashboard
         </Button>
-
+ 
         <Typography variant="h5" fontWeight="800" className="text-gray-900 tracking-tight">
              {hasNominated ? "Your Selection" : "Nominate a Peer"}
         </Typography>
         <Typography variant="body2" className="text-gray-500 mt-1">
-            {hasNominated 
-                ? "You have nominated the following colleague. You can edit or remove this selection." 
+            {hasNominated
+                ? "You have nominated the following colleague. You can edit or remove this selection."
                 : "Select a deserving peer below and tell us why they stand out."}
         </Typography>
-
+ 
         {/* Filter Bar - Hidden if Nominated */}
         {!hasNominated && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center mt-6 animate-fadeIn">
-                
+               
                 {/* Search - 50% */}
                 <div className="w-full md:w-1/2">
-                    <TextField 
-                        placeholder="Search by name..." 
+                    <TextField
+                        placeholder="Search by name..."
                         size="small"
                         fullWidth
                         value={searchTerm}
@@ -180,31 +181,31 @@ const Nominate = () => {
                         }}
                     />
                 </div>
-
+ 
                 {/* Filters - 50% */}
                 <div className="w-full md:w-1/2 flex gap-3">
                     <FormControl size="small" fullWidth>
                         <InputLabel>Department</InputLabel>
-                        <Select 
-                            value={deptFilter} 
+                        <Select
+                            value={deptFilter}
                             label="Department"
                             onChange={(e) => setDeptFilter(e.target.value)}
                             sx={{ borderRadius: 2 }}
                         >
-                            <MenuItem value="All">All</MenuItem>
+                            <MenuItem value="All"></MenuItem>
                             {departments.map((d: any) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
                         </Select>
                     </FormControl>
-
+ 
                     <FormControl size="small" fullWidth>
                         <InputLabel>Job Role</InputLabel>
-                        <Select 
-                            value={roleFilter} 
+                        <Select
+                            value={roleFilter}
                             label="Job Role"
                             onChange={(e) => setRoleFilter(e.target.value)}
                             sx={{ borderRadius: 2 }}
                         >
-                            <MenuItem value="All">All</MenuItem>
+                            <MenuItem value="All"></MenuItem>
                             {roles.map((r: any) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
                         </Select>
                     </FormControl>
@@ -212,43 +213,45 @@ const Nominate = () => {
             </div>
         )}
       </div>
-
+ 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {loading ? (
              <div className="flex justify-center p-10"><CircularProgress /></div>
         ) : hasNominated && mySelection ? (
-            // --- VIEW: My Selection (Single Card) ---
-            <div className="flex justify-center animate-fadeIn">
-                <EmployeeCard 
-                    emp={mySelection} 
-                    isSelected={true} 
+           
+            // --- VIEW: My Selection (Manage Mode) ---
+            <div className="animate-fadeIn">
+                <EmployeeTable
+                    employees={[mySelection]}
+                    mode="manage"
                     onEdit={handleEditClick}
                     onRemove={handleRemoveClick}
                 />
             </div>
+ 
         ) : (
-            // --- VIEW: Grid Selection ---
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-                {filteredEmployees.map((emp) => (
-                    <EmployeeCard 
-                        key={emp.id} 
-                        emp={emp} 
-                        onClick={() => handleCardClick(emp)}
-                    />
-                ))}
+           
+            // --- VIEW: Selection List (Nominate Mode) ---
+            <div className="animate-fadeIn">
+                <EmployeeTable
+                    employees={filteredEmployees}
+                    mode="nominate"
+                    onSelect={handleSelectClick}
+                />
+               
                 {filteredEmployees.length === 0 && (
-                    <div className="col-span-full text-center text-gray-500 py-10">
-                        No employees found matching your filters.
+                    <div className="text-center text-gray-500 py-12 border border-dashed border-gray-300 rounded-xl mt-4">
+                        <Typography>No employees found matching your filters.</Typography>
                     </div>
                 )}
             </div>
         )}
       </div>
-
+ 
       {/* 1. Nomination/Edit Dialog */}
-      <Dialog 
-        open={nominateDialogOpen} 
+      <Dialog
+        open={nominateDialogOpen}
         onClose={() => setNominateDialogOpen(false)}
         fullWidth
         maxWidth="sm"
@@ -266,7 +269,7 @@ const Nominate = () => {
                     <Typography variant="caption" className="text-gray-500">{selectedEmp?.employee_role || "Employee"}</Typography>
                 </div>
             </div>
-            
+           
             <Typography variant="body2" className="text-gray-600 mb-2 font-medium">
                 Reason for Nomination <span className="text-red-500">*</span>
             </Typography>
@@ -276,7 +279,7 @@ const Nominate = () => {
                 rows={4}
                 fullWidth
                 placeholder={mode === 'edit' ? "Enter your new reason here..." : "Ex: For outstanding leadership..."}
-                value={reason} 
+                value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
             />
@@ -285,9 +288,9 @@ const Nominate = () => {
             <Button onClick={() => setNominateDialogOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
                 Cancel
             </Button>
-            <Button 
-                onClick={handleSubmit} 
-                variant="contained" 
+            <Button
+                onClick={handleSubmit}
+                variant="contained"
                 disabled={!reason.trim() || submitting}
                 sx={{ bgcolor: '#00A8A8', borderRadius: 2, px: 4, "&:hover": { bgcolor: '#008f8f' } }}
             >
@@ -295,7 +298,7 @@ const Nominate = () => {
             </Button>
         </DialogActions>
       </Dialog>
-
+ 
       {/* 2. Remove Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -315,20 +318,20 @@ const Nominate = () => {
                 <br/><br/>
                 You can nominate someone else afterwards.
             </Typography>
-            
+           
             <div className="flex gap-3 w-full">
-                <Button 
-                    fullWidth 
-                    variant="outlined" 
+                <Button
+                    fullWidth
+                    variant="outlined"
                     onClick={() => setDeleteDialogOpen(false)}
                     sx={{ borderRadius: 2, borderColor: '#e5e7eb', color: '#374151' }}
                 >
                     Keep It
                 </Button>
-                <Button 
-                    fullWidth 
-                    variant="contained" 
-                    color="error" 
+                <Button
+                    fullWidth
+                    variant="contained"
+                    color="error"
                     onClick={handleConfirmDelete}
                     disabled={submitting}
                     sx={{ borderRadius: 2, boxShadow: 'none' }}
@@ -338,9 +341,10 @@ const Nominate = () => {
             </div>
         </div>
       </Dialog>
-
+ 
     </div>
   );
 };
-
+ 
 export default Nominate;
+ 

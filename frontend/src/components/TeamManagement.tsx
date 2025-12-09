@@ -1,92 +1,255 @@
 import { useState, useEffect } from "react";
-import { 
-  Card, CardContent, Typography, Button, TextField, 
-  Dialog, DialogTitle, DialogContent, DialogActions, Chip, Avatar, IconButton, 
+import {
+  Typography, Button, TextField, Dialog, DialogTitle, DialogContent,
+  DialogActions, CircularProgress, InputAdornment
 } from "@mui/material";
-import { Edit } from "@mui/icons-material";
+import { Group, Edit, Search } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
+import { Avatar } from "@mui/material";
 
 const TeamManagement = () => {
   const [team, setTeam] = useState<any[]>([]);
+  const [filteredTeam, setFilteredTeam] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Edit Dialog State
   const [openEdit, setOpenEdit] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
-  
-  // Edit Logic
   const [editForm, setEditForm] = useState({ employee_dept: "", employee_role: "" });
 
   useEffect(() => { loadTeam(); }, []);
 
   const loadTeam = async () => {
+    setLoading(true);
     try {
       const res = await authAPI.getMyTeam();
       setTeam(res.data);
-    } catch(e) { console.error(e); }
+      setFilteredTeam(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 🔍 Search Handler
+  const handleSearch = () => {
+    const term = searchTerm.toLowerCase();
+    const results = team.filter((e) =>
+      e.username.toLowerCase().includes(term)
+    );
+    setFilteredTeam(results);
+  };
+
+  // Open Edit Modal
+  const handleEditClick = (member: any) => {
+    setSelectedMember(member);
+    setEditForm({
+      employee_dept: member.employee_dept || "",
+      employee_role: member.employee_role || "",
+    });
+    setOpenEdit(true);
+  };
+
+  // Submit Update
   const handleUpdate = async () => {
     try {
-        await authAPI.updateTeamMember(selectedMember.id, editForm);
-        toast.success("Member Details Updated!");
-        setOpenEdit(false);
-        loadTeam();
-    } catch(e) { toast.error("Update failed"); }
+      await authAPI.updateTeamMember(selectedMember.id, editForm);
+      toast.success("Member Details Updated!");
+      setOpenEdit(false);
+      loadTeam();
+    } catch (e) {
+      toast.error("Update failed");
+    }
   };
 
   return (
     <div className="animate-fadeIn max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-            <Typography variant="h5" fontWeight="bold" className="text-gray-800">My Team</Typography>
-            <Typography variant="body2" color="textSecondary">Manage direct reports and assign job titles.</Typography>
-        </div>
+
+      {/* Header */}
+      <div className="mb-8">
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          className="text-gray-800 flex items-center gap-2"
+        >
+          <Group className="text-teal-600" /> My Team
+        </Typography>
+        <Typography variant="body2" color="textSecondary">
+          Manage your direct reports ({team.length} members)
+        </Typography>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {team.map(member => (
-          <Card key={member.id} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-            <CardContent className="flex items-center gap-4 relative">
-              <Avatar sx={{ width: 56, height: 56, bgcolor: '#cbd5e1', fontWeight: 'bold' }}>
-                {member.username?.[0]?.toUpperCase()}
-              </Avatar>
-              <div className="flex-grow">
-                <Typography fontWeight="bold" className="text-gray-800">{member.username}</Typography>
-                <div className="flex flex-col gap-1 mt-1">
-                    <Typography variant="caption" className="text-gray-500 block">
-                        {member.employee_role || "No Job Title"} 
-                    </Typography>
-                     <Chip 
-                        label={member.employee_dept || "No Dept"} 
-                        size="small" 
-                        sx={{ width: 'fit-content', height: 20, fontSize: '0.6rem', bgcolor: '#f1f5f9' }} 
-                    />
+      {/* SEARCH BAR */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+
+        <TextField
+          placeholder="Search employee name..."
+          fullWidth
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search className="text-gray-400" />
+              </InputAdornment>
+            ),
+            sx: {
+              borderRadius: 2,
+              background: "#fff",
+              "& fieldset": { border: "1px solid #e2e2e2" }
+            }
+          }}
+        />
+
+        <Button
+          variant="contained"
+          onClick={handleSearch}
+          startIcon={<Search />}
+          sx={{
+            bgcolor: "#00A8A8",
+            "&:hover": { bgcolor: "#008f8f" },
+            px: 5,
+            py: 1.4,
+            borderRadius: 2,
+            fontWeight: "bold"
+          }}
+        >
+          Search
+        </Button>
+      </div>
+
+      {/* CONTENT AREA */}
+      {loading ? (
+        <div className="flex justify-center p-12">
+          <CircularProgress sx={{ color: "#00A8A8" }} />
+        </div>
+      ) : filteredTeam.length === 0 ? (
+        <div className="text-center text-gray-500 py-10">
+          No team members found.
+        </div>
+      ) : (
+        // ROW-LIST UI (Like Promote Page)
+        <div className="space-y-4">
+          {filteredTeam.map((m) => (
+            <div
+              key={m.id}
+              className="
+                flex items-center justify-between
+                bg-white shadow-sm border border-gray-200
+                rounded-2xl px-6 py-4
+              "
+            >
+              {/* Left Section */}
+              <div className="flex items-center gap-5 flex-1">
+
+                <Avatar
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    bgcolor: "#00A8A8",
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                  }}
+                >
+                  {m.username?.charAt(0)?.toUpperCase()}
+                </Avatar>
+
+                {/* Details Row */}
+                <div className="flex items-center gap-10">
+
+                  <Typography className="text-gray-900 font-semibold min-w-[120px] capitalize">
+                    {m.username}
+                  </Typography>
+
+                  <Typography className="text-gray-700 min-w-[50px]">
+                    {m.employee_id}
+                  </Typography>
+
+                  <Typography className="text-gray-700 min-w-[150px] capitalize">
+                    {m.employee_role}
+                  </Typography>
+
+                  <Typography className="text-gray-700 min-w-[140px] capitalize">
+                    {m.employee_dept}
+                  </Typography>
+
                 </div>
               </div>
-              <IconButton onClick={() => { 
-                  setSelectedMember(member); 
-                  setEditForm({ employee_dept: member.employee_dept || "", employee_role: member.employee_role || "" }); 
-                  setOpenEdit(true); 
-              }}>
-                <Edit fontSize="small" className="text-teal-600"/>
-              </IconButton>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
-      {/* --- DIALOG: EDIT DETAILS --- */}
+              {/* Edit Button */}
+              <Button
+                variant="contained"
+                startIcon={<Edit />}
+                onClick={() => handleEditClick(m)}
+                sx={{
+                  bgcolor: "#00A8A8",
+                  "&:hover": { bgcolor: "#008f8f" },
+                  px: 4,
+                  py: 1.2,
+                  borderRadius: 2,
+                  fontWeight: "bold",
+                }}
+              >
+                Edit
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* --- EDIT DIALOG --- */}
       <Dialog open={openEdit} onClose={() => setOpenEdit(false)} fullWidth maxWidth="xs">
         <DialogTitle>Update {selectedMember?.username}</DialogTitle>
+
         <DialogContent className="pt-4 space-y-4">
-            <Typography variant="caption" className="text-gray-500">
-                Update the official job title and department for this employee.
-            </Typography>
-            <TextField fullWidth label="Job Title" value={editForm.employee_role} onChange={(e) => setEditForm({...editForm, employee_role: e.target.value})} size="small" />
-            <TextField fullWidth label="Department" value={editForm.employee_dept} onChange={(e) => setEditForm({...editForm, employee_dept: e.target.value})} size="small" />
+          <TextField
+            fullWidth
+            label="Job Title"
+            variant="outlined"
+            value={editForm.employee_role}
+            size="small"
+            onChange={(e) =>
+              setEditForm({ ...editForm, employee_role: e.target.value })
+            }
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+          />
+
+          <TextField
+            fullWidth
+            label="Department"
+            variant="outlined"
+            value={editForm.employee_dept}
+            size="small"
+            onChange={(e) =>
+              setEditForm({ ...editForm, employee_dept: e.target.value })
+            }
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+          />
         </DialogContent>
-        <DialogActions>
-            <Button onClick={() => setOpenEdit(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleUpdate} sx={{ bgcolor: '#00A8A8' }}>Save Changes</Button>
+
+        <DialogActions className="p-4 pt-0">
+          <Button onClick={() => setOpenEdit(false)} sx={{ color: "gray" }}>
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={handleUpdate}
+            sx={{
+              bgcolor: "#00A8A8",
+              borderRadius: 2,
+              "&:hover": { bgcolor: "#008f8f" }
+            }}
+          >
+            Save Changes
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

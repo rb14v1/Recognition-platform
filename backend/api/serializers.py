@@ -21,23 +21,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             employee_id=validated_data['employee_id'],
-            employee_dept=validated_data.get('employee_dept', None), 
+            employee_dept=validated_data.get('employee_dept', None),
             employee_role=validated_data.get('employee_role', None),
             role=User.EMPLOYEE # Force default
         )
         return user
-    
+   
 class CustomLoginSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         username = attrs.get("username")
         password = attrs.get("password")
-
+ 
         # 1. Check if the username even exists
         user_exists = User.objects.filter(username=username).exists()
         if not user_exists:
             # APT REASON #1
             raise AuthenticationFailed({"detail": "This username does not exist."})
-
+ 
         # 2. If username exists, let standard logic check the password
         try:
             data = super().validate(attrs)
@@ -45,7 +45,7 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
             # APT REASON #2
             # If we are here, username exists but password failed
             raise AuthenticationFailed({"detail": "Incorrect password. Please try again."})
-            
+           
         return data    
  
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -53,35 +53,60 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         # These are the fields your Frontend Context needs
         fields = ['id', 'username', 'email', 'role', 'employee_id', 'employee_dept', 'employee_role']
-        
+       
 class UserNominationListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role']
-
+ 
 # 2. For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomination
         fields = ['nominee', 'reason', 'nominator_name', 'nominee_name']  
-
+ 
     def create(self, validated_data):
         request = self.context['request']
         nominator = request.user
         nominee = validated_data['nominee']
-
+ 
         validated_data['nominator'] = nominator
-        
+       
         # FIX: Use username if first_name is empty
         nominator_display = f"{nominator.first_name} {nominator.last_name}".strip()
         validated_data['nominator_name'] = nominator_display if nominator_display else nominator.username
-
+ 
         nominee_display = f"{nominee.first_name} {nominee.last_name}".strip()
         validated_data['nominee_name'] = nominee_display if nominee_display else nominee.username
-
+ 
         return super().create(validated_data)
-    
+   
 class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'employee_id', 'employee_dept', 'employee_role', 'role']    
+       
+class FinalistSerializer(serializers.ModelSerializer):
+    nominee_name = serializers.CharField(source='nominee.username')
+    nominee_dept = serializers.CharField(source='nominee.employee_dept')
+    nominee_role = serializers.CharField(source='nominee.employee_role')
+    nominator_name = serializers.CharField(source='nominator.username')
+ 
+    class Meta:
+        model = Nomination
+        fields = ['id', 'nominee_name', 'nominee_dept', 'nominee_role', 'nominator_name', 'reason']
+ 
+# 2. For Admins (Includes vote_count)
+class AdminVoteResultSerializer(serializers.ModelSerializer):
+    nominee_name = serializers.CharField(source='nominee.username')
+    employee_id = serializers.CharField(source='nominee.employee_id')
+    employee_role = serializers.CharField(source='nominee.employee_role')
+    employee_dept = serializers.CharField(source='nominee.employee_dept')
+    vote_count = serializers.IntegerField()
+ 
+    class Meta:
+        model = Nomination
+        fields = [
+            'id', 'nominee_name', 'employee_id', 'employee_role',
+            'employee_dept', 'reason', 'status', 'vote_count'
+        ]      

@@ -2,50 +2,55 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard"; // The Traffic Cop
+import Dashboard from "./pages/Dashboard";
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Nominate from "./pages/Nominate";
-
-// 👇 THE BIG CHANGE: One Dashboard to rule them all
+import VotingPage from "./pages/VotingPage"; // 👈 IMPORT THIS
+ 
+// Dashboards
 import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
-import ManagementDashboard from "./pages/dashboards/ManagementDashboard"; // This handles Manager, Committee, & Admin
-
+import ManagementDashboard from "./pages/dashboards/ManagementDashboard";
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
+ 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public Routes */}
+          {/* Public */}
           <Route element={<MainLayout />}>
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Route>
-
-          {/* Protected Routes */}
+ 
+          {/* Protected */}
           <Route element={<ProtectedRoute />}>
              <Route element={<MainLayout />}>
-                {/* 1. Traffic Cop (Redirects based on Role) */}
+                {/* Traffic Cop */}
                 <Route path="/dashboard" element={<Dashboard />} />
-
-                {/* 2. Employee View */}
+ 
+                {/* 1. Employee */}
                 <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
-
-                {/* 3. Management View (Coordinator + Committee + Admin) */}
-                {/* All these roles go here now! */}
+ 
+                {/* 2. Management (Coordinator + Committee) */}
                 <Route path="/dashboard/management" element={<ManagementDashboard />} />
-                
-                {/* 4. Utilities */}
+               
+                {/* 3. Admin (Exclusive) */}
+                <Route path="/dashboard/admin" element={<AdminDashboard />} />
+               
+                {/* Utilities */}
                 <Route path="/dashboard/nominate" element={<Nominate />} />
+                <Route path="/dashboard/voting" element={<VotingPage />} /> {/* 👈 ADD THIS LINE */}
              </Route>
           </Route>
-
-          {/* Catch-all */}
+ 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
   );
 }
-
+ 
 export default App;
+ 

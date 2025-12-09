@@ -12,7 +12,7 @@ import {
 import { Search, PersonAdd, SentimentDissatisfied } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from 'react-hot-toast';
-import EmployeeCard from "./EmployeeCard";
+import EmployeeCard from "./EmployeeTable";
 
 interface AddMembersProps {
     onBack?: () => void; 
