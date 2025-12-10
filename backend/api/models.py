@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.core.exceptions import ValidationError
+from django.utils import timezone
  
 class CustomUserManager(UserManager):
     def create_superuser(self, username, email, password=None, **extra_fields):
@@ -120,6 +122,42 @@ class Nomination(models.Model):
  
     def __str__(self):
         return f"{self.nominator.username} -> {self.nominee.username}"    
+
+class NominationTimeline(models.Model):
+    name = models.CharField(max_length=50, help_text="e.g., 'Q4 2024 Awards'")
+    is_active = models.BooleanField(default=True, help_text="Only one timeline should be active at a time")
+
+    # Phase 1: Employees Nominate
+    nomination_start = models.DateTimeField()
+    nomination_end = models.DateTimeField()
+
+    # Phase 2: Coordinators Review
+    coordinator_start = models.DateTimeField()
+    coordinator_end = models.DateTimeField()
+
+    # Phase 3: Committee Selects Finalists
+    committee_start = models.DateTimeField()
+    committee_end = models.DateTimeField()
+
+    # Phase 4: Voting
+    voting_start = models.DateTimeField()
+    voting_end = models.DateTimeField()
+
+    def clean(self):
+        # Optional: Ensure dates are sequential (Nomination < Coordinator < Committee < Vote)
+        if self.nomination_end > self.coordinator_start:
+            raise ValidationError("Coordinator review cannot start before Nominations end.")
+        if self.coordinator_end > self.committee_start:
+            raise ValidationError("Committee review cannot start before Coordinator review ends.")
+    
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            # Ensure no other timeline is active
+            NominationTimeline.objects.filter(is_active=True).update(is_active=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} (Active: {self.is_active})"
  
 class Vote(models.Model):
     voter = models.OneToOneField(

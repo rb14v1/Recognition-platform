@@ -16,9 +16,10 @@ from .serializers import (
     CustomLoginSerializer,
     TeamMemberSerializer,
     AdminVoteResultSerializer,
-    FinalistSerializer
+    FinalistSerializer,
+    NominationTimelineSerializer
 )
-from .models import Nomination
+from .models import Nomination, NominationTimeline
  
 User = get_user_model()
  
@@ -138,27 +139,72 @@ class NominationOptionsView(generics.ListAPIView):
             queryset = queryset.filter(location__iexact=loc_filter)
  
         return queryset
+    
+def check_timeline_validity(phase):
+    """
+    Checks if the current time falls within the allowed window for a specific phase.
+    Phases: 'NOMINATION', 'COORDINATOR', 'COMMITTEE', 'VOTING', 'ADMIN_RESULTS'
+    """
+    now = timezone.now()
+    timeline = NominationTimeline.objects.filter(is_active=True).first()
+
+    if not timeline:
+        return False, "No active nomination cycle found. Please contact Admin."
+
+    if phase == 'NOMINATION':
+        if not (timeline.nomination_start <= now <= timeline.nomination_end):
+            return False, f"Nominations are closed. Open from {timeline.nomination_start.date()} to {timeline.nomination_end.date()}"
+
+    elif phase == 'COORDINATOR':
+        if now < timeline.coordinator_start:
+            return False, "Coordinator review has not started yet. Please wait for the nomination period to end."
+        if now > timeline.coordinator_end:
+            return False, "Coordinator review window has closed."
+
+    elif phase == 'COMMITTEE':
+        if now < timeline.committee_start:
+            return False, "Committee review has not started yet. Waiting for Coordinators to finish."
+        if now > timeline.committee_end:
+            return False, "Committee selection window has closed."
+
+    elif phase == 'VOTING':
+        if now < timeline.voting_start:
+            return False, "Voting has not begun yet."
+        if now > timeline.voting_end:
+            return False, "Voting is closed."
+            
+    elif phase == 'ADMIN_RESULTS':
+        # Admin can only declare winners AFTER voting ends
+        if now <= timeline.voting_end:
+            return False, "Cannot declare winners yet. Voting is still in progress."
+
+    return True, "Allowed"    
  
 # NEW: The Action to Submit Nomination
+# 1. NOMINATING (Employees)
 class CreateNominationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
     def post(self, request):
-        # 1. Check if user already nominated someone
+        # 🔥 TIME CHECK
+        is_valid, msg = check_timeline_validity('NOMINATION')
+        if not is_valid:
+            return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+
+        # Existing Logic
         if Nomination.objects.filter(nominator=request.user).exists():
             return Response(
                 {"error": "You have already nominated someone. You can only nominate 1 person."},
                 status=status.HTTP_400_BAD_REQUEST
             )
  
-        # 2. Serialize and Save
         serializer = NominationSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Nomination submitted successfully!"}, status=status.HTTP_201_CREATED)
        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
- 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+     
 class NominationStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
@@ -304,92 +350,85 @@ class TeamMemberDetailView(APIView):
  
 # 2. UPDATED: Smart Nomination View for both Coordinators and Committee
 # 1. NOMINATIONS (The Pipeline Logic)
+# 2. APPROVALS (Coordinators & Committee)
 class CoordinatorNominationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
     def get(self, request):
+        # (GET logic remains the same as your previous code, no time check needed for VIEWING)
         filter_type = request.query_params.get('filter', 'pending')
         user_role = request.user.role
- 
-        # Base Query: Get names and details
         query = Nomination.objects.select_related('nominee', 'nominator').order_by('-submitted_at')
  
-        # --- LOGIC BRANCHING ---
-       
-        # A. COMMITTEE VIEW: They see everything that Coordinators have APPROVED
         if user_role == 'COMMITTEE':
             if filter_type == 'history':
-                # Show what Committee has already processed
                 nominations = query.filter(status__in=['COMMITTEE_APPROVED', 'REJECTED', 'AWARDED'])
             else:
-                # Show incoming pool (Approved by Coordinators)
                 nominations = query.filter(status='APPROVED')
- 
-        # B. COORDINATOR VIEW: They only see their direct reports
         else:
+            # Coordinator
             if filter_type == 'history':
                 nominations = query.filter(nominee__manager=request.user, status__in=['APPROVED', 'REJECTED', 'COMMITTEE_APPROVED', 'AWARDED'])
             else:
-                nominations = query.filter(nominee__manager=request.user, status='SUBMITTED')
- 
-        # Serialize
+                nominations = query.filter(nominee__manager=request.user, status='SUBMITTED') 
+
         data = [{
             "id": n.id,
-            "nominee_name": n.nominee_name or n.nominee.username,
-            "nominator_name": n.nominator_name or n.nominator.username,
+            "nominee_name": n.nominee.username,
+            "nominee_role": n.nominee.employee_role or "Employee",
+            "nominee_dept": n.nominee.employee_dept or "General",
+            "nominator_name": n.nominator.username,
             "reason": n.reason,
             "submitted_at": n.submitted_at,
-            "status": n.status,
-            "nominee_role": n.nominee.employee_role or "Employee",
-            "nominee_dept": n.nominee.employee_dept or "General"
+            "status": n.status
         } for n in nominations]
-       
         return Response(data)
  
     def post(self, request):
         nom_id = request.data.get('nomination_id')
-        action = request.data.get('action') # 'APPROVE', 'REJECT', 'FINAL_APPROVE'
+        action = request.data.get('action')
         user_role = request.user.role
  
         try:
             nom = Nomination.objects.get(id=nom_id)
  
-            # --- SECURITY & STATE MACHINE ---
- 
-            # 1. Coordinator Logic
+            # --- COORDINATOR LOGIC ---
             if user_role == 'COORDINATOR':
-                # Must be my team
+                # 🔥 TIME CHECK
+                is_valid, msg = check_timeline_validity('COORDINATOR')
+                if not is_valid:
+                    return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+
                 if nom.nominee.manager != request.user:
                     return Response({"error": "Not your team member"}, status=403)
-               
                 nom.status = 'APPROVED' if action == 'APPROVE' else 'REJECTED'
  
-            # 2. Committee Logic
+            # --- COMMITTEE LOGIC ---
             elif user_role == 'COMMITTEE':
+                # 🔥 TIME CHECK
+                is_valid, msg = check_timeline_validity('COMMITTEE')
+                if not is_valid:
+                    return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+
                 if nom.status != 'APPROVED':
                     return Response({"error": "Not ready for review"}, status=400)
-               
+ 
                 if action == 'APPROVE':
-                    # 🔥 CONSTRAINT CHECK: Max 15 Finalists
                     current_finalists = Nomination.objects.filter(status='COMMITTEE_APPROVED').count()
                     if current_finalists >= 15:
-                        return Response(
-                            {"error": "Finalist limit reached (Max 15). You must reject someone before approving another."},
-                            status=400
-                        )
+                        return Response({"error": "Finalist limit reached (Max 15)."}, status=400)
                     nom.status = 'COMMITTEE_APPROVED'
                 else:
                     nom.status = 'REJECTED'
-            # 3. Admin Logic (Optional, for later)
-            elif user_role == 'ADMIN':
-                nom.status = 'AWARDED' if action == 'APPROVE' else 'REJECTED'
- 
+            
+            # (Admin Logic removed from here, moved to specific endpoint or results view)
+            
             nom.save()
             return Response({"message": f"Status updated to {nom.status}"})
  
         except Nomination.DoesNotExist:
             return Response({"error": "Nomination not found"}, status=404)
-                               
+                                               
 class UnassignedEmployeesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
@@ -443,39 +482,32 @@ class VotingView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
     def get(self, request):
-        # Check if user has already voted
+        # (GET remains same)
         has_voted = Vote.objects.filter(voter=request.user).exists()
-       
-        # Get all finalists
         finalists = Nomination.objects.filter(status='COMMITTEE_APPROVED')
         serializer = FinalistSerializer(finalists, many=True)
-       
-        return Response({
-            "has_voted": has_voted,
-            "finalists": serializer.data
-        })
+        return Response({"has_voted": has_voted, "finalists": serializer.data})
  
     def post(self, request):
-        # Security: Admins should not vote in the employee pool (optional, based on your prompt)
+        # 🔥 TIME CHECK
+        is_valid, msg = check_timeline_validity('VOTING')
+        if not is_valid:
+            return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+
         if request.user.role == 'ADMIN':
-             return Response({"error": "Admins oversee the process and cannot cast employee votes."}, status=403)
+             return Response({"error": "Admins cannot vote."}, status=403)
  
-        # 1. Check if already voted
         if Vote.objects.filter(voter=request.user).exists():
             return Response({"error": "You have already cast your vote."}, status=400)
  
         nomination_id = request.data.get('nomination_id')
-       
         try:
             nom = Nomination.objects.get(id=nomination_id, status='COMMITTEE_APPROVED')
-           
-            # 2. Cast Vote
             Vote.objects.create(voter=request.user, nomination=nom)
             return Response({"message": "Vote cast successfully!"})
-           
         except Nomination.DoesNotExist:
             return Response({"error": "Invalid finalist selected."}, status=404)
- 
+         
  
 # 3. NEW: Admin Results View
 class AdminResultsView(APIView):
@@ -485,12 +517,57 @@ class AdminResultsView(APIView):
         if request.user.role != 'ADMIN':
             return Response({"error": "Unauthorized"}, status=403)
  
-        # Get finalists with vote counts
         results = Nomination.objects.filter(
             status__in=['COMMITTEE_APPROVED', 'AWARDED']
-        ).annotate(
-            vote_count=Count('votes')
-        ).order_by('-vote_count')
+        ).annotate(vote_count=Count('votes')).order_by('-vote_count')
  
         serializer = AdminVoteResultSerializer(results, many=True)
         return Response(serializer.data)
+
+    # 🔥 NEW: Endpoint to finalize winners
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Unauthorized"}, status=403)
+
+        # 🔥 TIME CHECK
+        is_valid, msg = check_timeline_validity('ADMIN_RESULTS')
+        if not is_valid:
+            return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+
+        # Logic to mark winner
+        winner_id = request.data.get('nomination_id')
+        try:
+            winner = Nomination.objects.get(id=winner_id)
+            winner.status = 'AWARDED'
+            winner.save()
+            return Response({"message": "Winner declared!"})
+        except Nomination.DoesNotExist:
+            return Response({"error": "Nomination not found"}, status=404)
+        
+class AdminTimelineView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Unauthorized"}, status=403)
+        
+        # Get the active timeline, or the latest one
+        timeline = NominationTimeline.objects.filter(is_active=True).first()
+        if not timeline:
+            return Response({"message": "No active timeline found.", "data": None})
+        
+        serializer = NominationTimelineSerializer(timeline)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"error": "Unauthorized"}, status=403)
+
+        # Deactivate any existing active timelines first to keep it clean
+        NominationTimeline.objects.filter(is_active=True).update(is_active=False)
+
+        serializer = NominationTimelineSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(is_active=True)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)        

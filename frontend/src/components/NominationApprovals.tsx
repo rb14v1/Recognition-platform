@@ -1,22 +1,33 @@
 import { useState, useEffect } from "react";
 import {
-  Card, CardContent, Typography, Button, Chip,
-  Tabs, Tab, Box, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Chip,
+  Tabs,
+  Tab,
+  Box,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
-  CheckCircle, Cancel, EmojiEvents, Badge,
-  History, AccessTime
+  CheckCircle,
+  Cancel,
+  EmojiEvents,
+  History,
+  AccessTime,
 } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
  
 const NominationApprovals = () => {
-  const [activeTab, setActiveTab] = useState(0); // 0 = Pending, 1 = History
+  const [activeTab, setActiveTab] = useState(0);
   const [nominations, setNominations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
- 
-  // Modal state
   const [openModal, setOpenModal] = useState<any>(null);
  
   useEffect(() => {
@@ -39,16 +50,15 @@ const NominationApprovals = () => {
   const handleAction = async (id: number, action: "APPROVE" | "REJECT") => {
     try {
       await authAPI.reviewNomination({ nomination_id: id, action });
-      toast.success(
-        `Nomination ${action === "APPROVE" ? "Approved" : "Rejected"}!`
-      );
+      toast.success(`Nomination ${action === "APPROVE" ? "Approved" : "Rejected"}!`);
+      setOpenModal(null);
       loadNoms();
     } catch (e) {
       toast.error("Action failed");
     }
   };
  
-  // GROUP nominations by nominee
+  /** GROUP NOMINATIONS BY NOMINEE */
   const grouped = nominations.reduce((acc: any, nom: any) => {
     const key = nom.nominee_name;
  
@@ -76,6 +86,7 @@ const NominationApprovals = () => {
  
   return (
     <div className="animate-fadeIn max-w-5xl mx-auto">
+      {/* PAGE HEADER */}
       <div className="mb-6">
         <Typography variant="h5" fontWeight="bold" className="text-gray-800">
           Team Nominations
@@ -108,7 +119,7 @@ const NominationApprovals = () => {
         </Tabs>
       </Box>
  
-      {/* LOADING */}
+      {/* LOADING / EMPTY STATE / DATA */}
       {loading ? (
         <div className="flex justify-center py-20">
           <CircularProgress />
@@ -129,56 +140,75 @@ const NominationApprovals = () => {
               key={index}
               sx={{
                 borderRadius: 3,
-                borderLeft:
-                  activeTab === 0
-                    ? "6px solid #00A8A8"
-                    : "6px solid #cbd5e1",
+                borderLeft: "6px solid #00A8A8",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
               }}
             >
-              <CardContent className="flex flex-col gap-4 p-6">
-                {/* HEADER */}
-                <div className="flex items-center gap-3">
-                  <Typography variant="h6" fontWeight="bold">
-                    {grp.nominee_name}
+              <CardContent className="flex flex-col md:flex-row justify-between gap-6 p-6">
+                {/* LEFT SIDE — INFO */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <Typography variant="h6" fontWeight="bold">
+                      {grp.nominee_name}
+                    </Typography>
+ 
+                    <Chip
+                      label={grp.nominee_role}
+                      size="small"
+                      sx={{
+                        bgcolor: "#e2e8f0",
+                        color: "#000",
+                        fontWeight: "bold",
+                      }}
+                    />
+                  </div>
+ 
+                  <Typography
+                    sx={{ marginTop: 2, fontWeight: 500 }}
+                  >
+                    {grp.list.length} nomination(s) received
+                    <span
+                      onClick={() => setOpenModal(grp)}
+                      style={{
+                        marginLeft: "8px",
+                        backgroundColor: "#e2e8f0",
+                        padding: "4px 10px",
+                        borderRadius: "16px",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: "#000",
+                        cursor: "pointer",
+                        display: "inline-block"
+                      }}
+                    >
+                      View details
+                    </span>
                   </Typography>
  
-                  <Chip
-                    label={grp.nominee_role}
-                    size="small"
-                    sx={{
-                      bgcolor: "#f1f5f9",
-                      color: "#475569",
-                      fontWeight: "bold",
-                    }}
-                  />
  
-                  {activeTab === 1 && (
-                    <Chip
-                      label={grp.status}
-                      color={grp.status === "APPROVED" ? "success" : "error"}
-                      size="small"
-                      sx={{ fontWeight: "bold" }}
-                    />
-                  )}
                 </div>
  
-                {/* SUMMARY */}
-                <Typography
-                  className="text-teal-600 font-medium cursor-pointer"
-                  onClick={() => setOpenModal(grp)}
-                >
-                  {grp.list.length} nomination(s) received — <b>View details</b>
-                </Typography>
- 
-                {/* ACTION BUTTONS */}
+                {/* RIGHT SIDE — APPROVE & REJECT STACKED */}
                 {activeTab === 0 && (
-                  <div className="flex gap-2 pt-2 border-t">
+                  <div
+                    className="flex flex-col gap-3"
+                    style={{
+                      minWidth: "180px",
+                      justifyContent: "flex-start",
+                      alignItems: "flex-end",
+                    }}
+                  >
                     <Button
                       variant="contained"
                       color="success"
                       startIcon={<CheckCircle />}
-                      fullWidth
                       onClick={() => handleAction(grp.id, "APPROVE")}
+                      sx={{
+                        fontWeight: "bold",
+                        textTransform: "none",
+                        borderRadius: 2,
+                        width: "150px",
+                      }}
                     >
                       Approve
                     </Button>
@@ -187,8 +217,13 @@ const NominationApprovals = () => {
                       variant="outlined"
                       color="error"
                       startIcon={<Cancel />}
-                      fullWidth
                       onClick={() => handleAction(grp.id, "REJECT")}
+                      sx={{
+                        fontWeight: "bold",
+                        textTransform: "none",
+                        borderRadius: 2,
+                        width: "150px",
+                      }}
                     >
                       Reject
                     </Button>
@@ -206,23 +241,42 @@ const NominationApprovals = () => {
         onClose={() => setOpenModal(null)}
         fullWidth
         maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 3, overflow: "hidden" } }}
       >
-        <DialogTitle>
+        <DialogTitle
+          sx={{
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            color: "#008080",
+            borderBottom: "2px solid #008080",
+            pb: 2,
+          }}
+        >
           Nominations for {openModal?.nominee_name}
         </DialogTitle>
  
-        <DialogContent>
+        <DialogContent sx={{ pb: 1 }}>
           {openModal?.list?.map((item: any, i: number) => (
-            <div key={i} className="border-b py-3">
-              <Typography>
-                <b>Nominated by:</b> {item.nominator_name}
+            <div
+              key={i}
+              style={{
+                marginBottom: "18px",
+                paddingBottom: "12px",
+                borderBottom: "1px solid #e5e5e5",
+              }}
+            >
+              <Typography sx={{ fontWeight: "bold", color: "#000" }}>
+                Nominated by:{" "}
+                <span style={{ fontWeight: 400 }}>{item.nominator_name}</span>
               </Typography>
-              <Typography>
+ 
+              <Typography sx={{ color: "#333", mb: 1, wordBreak: "break-word" }}>
                 <b>Reason:</b> {item.reason}
               </Typography>
+ 
               <Typography
                 variant="caption"
-                className="text-gray-400"
+                sx={{ color: "#008080", fontStyle: "italic" }}
               >
                 {new Date(item.submitted_at).toLocaleString()}
               </Typography>
@@ -230,8 +284,31 @@ const NominationApprovals = () => {
           ))}
         </DialogContent>
  
-        <DialogActions>
-          <Button onClick={() => setOpenModal(null)}>Close</Button>
+        {/* Modal Action Buttons */}
+        <DialogActions sx={{ justifyContent: "flex-start", px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircle />}
+            onClick={() => handleAction(openModal?.id, "APPROVE")}
+            sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
+          >
+            Approve
+          </Button>
+ 
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<Cancel />}
+            onClick={() => handleAction(openModal?.id, "REJECT")}
+            sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
+          >
+            Reject
+          </Button>
+ 
+          <Button onClick={() => setOpenModal(null)} sx={{ ml: "auto" }}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

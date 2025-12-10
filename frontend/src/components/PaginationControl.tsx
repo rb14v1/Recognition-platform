@@ -7,20 +7,24 @@ interface PaginationControlProps {
 }
 
 const PaginationControl = ({ count, page, onChange }: PaginationControlProps) => {
+  // Hide if there's only 1 page (or 0)
   if (count <= 1) return null;
 
   return (
-    <div className="flex justify-center mt-6 mb-4">
+    <div className="flex justify-center mt-8 mb-4">
       <Pagination
         count={count}
         page={page}
         onChange={onChange}
+        // These props ensure the UI doesn't break with 50+ pages
+        siblingCount={1} 
+        boundaryCount={1}
         showFirstButton
         showLastButton
         sx={{
           '& .MuiPaginationItem-root': {
             borderRadius: '8px',
-            color: '#64748b',
+            color: '#64748b', // Slate-500
             fontWeight: 'bold',
             '&:hover': {
               backgroundColor: '#f0fdfa', // Teal-50

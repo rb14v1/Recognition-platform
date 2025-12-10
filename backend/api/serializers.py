@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
-from .models import Nomination
+from .models import Nomination, NominationTimeline
  
 User = get_user_model()
  
@@ -59,6 +59,10 @@ class UserNominationListSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role', 'location']
  
+class NominationTimelineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NominationTimeline
+        fields = '__all__' 
 # 2. For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
     class Meta:

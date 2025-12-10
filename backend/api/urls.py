@@ -7,7 +7,7 @@ from .views import (
     NominationOptionsView,
     CreateNominationView,
     NominationStatusView,
-    ManageNominationView, NominationStatusView, NominationOptionsView,UnassignedEmployeesView, PromotableUsersView, TeamMemberDetailView, CoordinatorTeamView, CoordinatorNominationView, VotingView, AdminResultsView
+    ManageNominationView, NominationStatusView, NominationOptionsView,UnassignedEmployeesView, PromotableUsersView, TeamMemberDetailView, CoordinatorTeamView, CoordinatorNominationView, VotingView, AdminResultsView, AdminTimelineView
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
  
@@ -28,5 +28,6 @@ urlpatterns = [
     path('coordinator/team/<int:pk>/', TeamMemberDetailView.as_view(), name='team_member_detail'),
     path('voting/finalists/', VotingView.as_view(), name='voting_list'), # GET to see, POST to vote
     path('admin/results/', AdminResultsView.as_view(), name='admin_results'),
+    path('admin/timeline/', AdminTimelineView.as_view(), name='admin_timeline'),
 ]
  

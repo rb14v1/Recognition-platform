@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar"; 
 import PaginationControl from "../components/PaginationControl"; // 🔥 IMPORT
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 5; // Adjust number of rows per page here
 
 const Nominate = () => {
   const navigate = useNavigate();
@@ -256,7 +256,7 @@ const Nominate = () => {
                     sx={{ 
                         bgcolor: '#f3f4f6', 
                         color: '#4b5563', 
-                        fontWeight: 600,
+                        fontWeight: 600, 
                         borderRadius: '6px'
                     }}
                 />
@@ -354,12 +354,13 @@ const Nominate = () => {
           </div>
         ) : hasNominated && mySelection ? (
           <div className="flex flex-col gap-4">
+             {/* Header is hidden for single selection mode usually */}
              <EmployeeRow emp={mySelection} type="manage" />
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             
-            {/* HEADER ROW */}
+            {/* 🔥 HEADER ROW */}
             <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
                 <div className="w-1/4 pl-2">Employee Details</div>
                 <div className="flex-1 flex items-center gap-4">
@@ -391,7 +392,7 @@ const Nominate = () => {
         )}
       </div>
 
-      {/* ---------------- DIALOGS (Existing logic) ---------------- */}
+      {/* ---------------- DIALOGS ---------------- */}
       <Dialog
         open={nominateDialogOpen}
         onClose={() => setNominateDialogOpen(false)}

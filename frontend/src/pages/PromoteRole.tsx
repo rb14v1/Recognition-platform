@@ -2,28 +2,35 @@ import { useState, useEffect, useMemo } from "react";
 import {
     Typography, Button, Dialog, DialogTitle, DialogContent,
     DialogActions, FormControl, RadioGroup, FormControlLabel,
-    Radio, Box, Avatar, Chip, Tooltip, CircularProgress
+    Radio, Box, Avatar, Chip, CircularProgress
 } from "@mui/material";
 import { TrendingUp, School, ArrowBack } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
-import PaginationControl from "../components/PaginationControl"; // 🔥 IMPORT
+import PaginationControl from "../components/PaginationControl";
 
 const ITEMS_PER_PAGE = 6;
+
+// Role Definitions for logic
+const ROLE_DEFINITIONS = [
+    { value: 'EMPLOYEE', label: 'Employee', level: 1, desc: "Standard access" },
+    { value: 'COORDINATOR', label: 'Coordinator', level: 2, desc: "Can manage teams & approve nominations" },
+    { value: 'COMMITTEE', label: 'Committee', level: 3, desc: "Can review & select finalists" },
+    { value: 'ADMIN', label: 'Admin', level: 4, desc: "Full system access" },
+];
 
 const PromoteRole = () => {
     const navigate = useNavigate();
 
     // Data
+    const [currentUser, setCurrentUser] = useState<any>(null); // To know MY role
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // Pagination State
     const [page, setPage] = useState(1);
 
-    // Filter State
+    // Filters
     const [searchTerm, setSearchTerm] = useState("");
     const [searchType, setSearchType] = useState<"name" | "empId">("name");
     const [filters, setFilters] = useState({
@@ -37,20 +44,34 @@ const PromoteRole = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [targetRole, setTargetRole] = useState("");
 
-    useEffect(() => { loadUsers(); }, []);
+    // Load Data
+    useEffect(() => {
+        const initData = async () => {
+            setLoading(true);
+            try {
+                // Fetch Me (for my role) AND Users
+                const [meRes, listRes] = await Promise.all([
+                    authAPI.getMe(),
+                    authAPI.getPromotableUsers()
+                ]);
+                setCurrentUser(meRes.data);
+                setUsers(listRes.data);
+            } catch (e) {
+                console.error(e);
+                toast.error("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+        initData();
+    }, []);
 
-    const loadUsers = async () => {
-        setLoading(true);
+    // Reload list helper
+    const reloadList = async () => {
         try {
-            // Fetch all promotable users initially
             const res = await authAPI.getPromotableUsers();
             setUsers(res.data);
-        } catch (e) {
-            console.error(e);
-            toast.error("Failed to load employees");
-        } finally {
-            setLoading(false);
-        }
+        } catch(e) { console.error(e); }
     };
 
     const handlePromote = async () => {
@@ -62,14 +83,29 @@ const PromoteRole = () => {
             });
             toast.success(`${selectedUser.username} promoted successfully!`);
             setOpenDialog(false);
-            setTargetRole(""); // Reset selection
-            loadUsers(); // Refresh list
+            setTargetRole(""); 
+            reloadList(); 
         } catch (e: any) {
             toast.error(e.response?.data?.error || "Promotion failed");
         }
     };
 
-    // --- DERIVED OPTIONS (For Dropdowns) ---
+    // --- LOGIC: Calculate Available Promotion Options ---
+    const availableRoles = useMemo(() => {
+        if (!currentUser || !selectedUser) return [];
+
+        const myRoleObj = ROLE_DEFINITIONS.find(r => r.value === currentUser.role);
+        const targetRoleObj = ROLE_DEFINITIONS.find(r => r.value === selectedUser.role);
+
+        if (!myRoleObj || !targetRoleObj) return [];
+
+        // Rule: Show roles STRICTLY HIGHER than target, but LESS OR EQUAL to Me
+        return ROLE_DEFINITIONS.filter(r => 
+            r.level > targetRoleObj.level && r.level <= myRoleObj.level
+        );
+    }, [currentUser, selectedUser]);
+
+    // --- Derived Options for SearchBar ---
     const departments = useMemo(() => 
         ["All", ...Array.from(new Set(users.map(u => u.employee_dept).filter(Boolean)))], 
         [users]
@@ -83,42 +119,34 @@ const PromoteRole = () => {
         [users]
     );
 
-    // --- 🔥 Reset Page on Filter Change ---
-    useEffect(() => {
-        setPage(1);
-    }, [searchTerm, searchType, filters]);
+    // Reset Page on Filter Change
+    useEffect(() => { setPage(1); }, [searchTerm, searchType, filters]);
 
-    // --- CLIENT-SIDE FILTERING ---
+    // --- Filter Logic ---
     const filteredUsers = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
-
         return users.filter((u) => {
             const username = u.username?.toLowerCase() || "";
             const empId = u.employee_id?.toLowerCase() || "";
-            const dept = u.employee_dept || "";
-            const job = u.employee_role || "";
-            const loc = u.location || "";
-
             const matchesSearch = searchType === "name" 
                 ? username.includes(q) 
                 : empId.includes(q);
 
-            const matchesDept = filters.dept === "All" || dept === filters.dept;
-            const matchesRole = filters.role === "All" || job === filters.role;
-            const matchesLoc = filters.location === "All" || loc === filters.location;
+            const matchesDept = filters.dept === "All" || u.employee_dept === filters.dept;
+            const matchesRole = filters.role === "All" || u.employee_role === filters.role;
+            const matchesLoc = filters.location === "All" || u.location === filters.location;
 
             return matchesSearch && matchesDept && matchesRole && matchesLoc;
         });
     }, [users, searchTerm, searchType, filters]);
 
-    // --- 🔥 Pagination Logic ---
+    // --- Pagination Logic ---
     const paginatedUsers = useMemo(() => {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }, [filteredUsers, page]);
 
     const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
-
 
     return (
         <div className="animate-fadeIn max-w-6xl mx-auto pb-20 p-6">
@@ -137,12 +165,12 @@ const PromoteRole = () => {
                         <TrendingUp sx={{ color: "#00A8A8" }} /> Promote Employees
                     </Typography>
                     <Typography variant="body2" color="textSecondary" className="mt-1">
-                        Elevate eligible employees to higher roles. You can only promote up to your own level.
+                        Elevate eligible employees to higher roles.
                     </Typography>
                 </div>
             </div>
 
-            {/* SEARCH BAR */}
+            {/* SEARCH BAR (Restored) */}
             <SearchBar 
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -163,7 +191,7 @@ const PromoteRole = () => {
             ) : (
                 <div className="flex flex-col gap-3">
                     
-                    {/* 🔥 HEADER ROW */}
+                    {/* Header Row */}
                     <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
                         <div className="w-1/3 pl-2">Employee Details</div>
                         <div className="flex-1 flex items-center gap-4">
@@ -174,13 +202,13 @@ const PromoteRole = () => {
                         <div className="w-[140px] text-right pr-4">Action</div>
                     </div>
 
-                    {/* ROWS */}
+                    {/* Rows */}
                     {paginatedUsers.map((u) => (
                         <div
                             key={u.id}
                             className="group flex flex-col md:flex-row items-center p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-teal-300 transition-all duration-200"
                         >
-                            {/* LEFT: Identity */}
+                            {/* Identity */}
                             <div className="flex items-center gap-4 w-full md:w-1/3 mb-2 md:mb-0">
                                 <Avatar
                                     sx={{
@@ -201,19 +229,14 @@ const PromoteRole = () => {
                                 </div>
                             </div>
 
-                            {/* MIDDLE: Details */}
+                            {/* Details */}
                             <div className="flex items-center justify-between w-full md:flex-1 gap-4">
-                                {/* ID Column */}
                                 <div className="w-20 text-sm text-gray-500 font-mono hidden md:block">
                                     {u.employee_id}
                                 </div>
-
-                                {/* Role Column */}
                                 <div className="flex-1 text-sm font-medium text-gray-700">
                                     {u.employee_role || <span className="text-gray-400 italic">No Title</span>}
                                 </div>
-
-                                {/* Dept Column */}
                                 <div className="w-32">
                                     <Chip 
                                         label={u.employee_dept || "General"} 
@@ -226,7 +249,7 @@ const PromoteRole = () => {
                                 </div>
                             </div>
 
-                            {/* RIGHT: Action */}
+                            {/* Action */}
                             <div className="w-full md:w-[140px] flex justify-end mt-3 md:mt-0">
                                 <Button
                                     variant="contained"
@@ -253,7 +276,6 @@ const PromoteRole = () => {
                         </div>
                     )}
 
-                    {/* 🔥 PAGINATION CONTROL */}
                     <PaginationControl 
                         count={totalPages} 
                         page={page} 
@@ -288,21 +310,28 @@ const PromoteRole = () => {
                             value={targetRole}
                             onChange={(e) => setTargetRole(e.target.value)}
                         >
-                            <FormControlLabel
-                                value="COORDINATOR"
-                                control={<Radio sx={{ color: "#00A8A8", "&.Mui-checked": { color: "#00A8A8" } }} />}
-                                label={
-                                    <Box>
-                                        <Typography fontWeight="bold" variant="body2">Coordinator</Typography>
-                                        <Typography variant="caption" className="text-gray-500">
-                                            Can manage teams & approve nominations
-                                        </Typography>
-                                    </Box>
-                                }
-                                className="mb-2 border border-gray-200 rounded-lg p-1 hover:bg-gray-50 transition"
-                                sx={{ margin: 0, mb: 1, width: '100%' }}
-                            />
-                             {/* You can add COMMITTEE here if needed later */}
+                            {/* 🔥 DYNAMICALLY RENDERED OPTIONS */}
+                            {availableRoles.length > 0 ? (
+                                availableRoles.map((role) => (
+                                    <FormControlLabel
+                                        key={role.value}
+                                        value={role.value}
+                                        control={<Radio sx={{ color: "#00A8A8", "&.Mui-checked": { color: "#00A8A8" } }} />}
+                                        label={
+                                            <Box>
+                                                <Typography fontWeight="bold" variant="body2">{role.label}</Typography>
+                                                <Typography variant="caption" className="text-gray-500">{role.desc}</Typography>
+                                            </Box>
+                                        }
+                                        className="mb-2 border border-gray-200 rounded-lg p-1 hover:bg-gray-50 transition"
+                                        sx={{ margin: 0, mb: 1, width: '100%' }}
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center py-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-500 text-sm">
+                                    No higher roles available for you to grant.
+                                </div>
+                            )}
                         </RadioGroup>
                     </FormControl>
                 </DialogContent>

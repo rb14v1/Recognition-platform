@@ -14,11 +14,15 @@ const Dashboard = () => {
           navigate("/dashboard/employee");
           break;
           
-        // ✅ GROUPED: All Management roles go to the same powerful dashboard
+        // ✅ SHARED: Coordinator & Committee share the management view
         case "COORDINATOR": 
         case "COMMITTEE":
-        case "ADMIN": 
           navigate("/dashboard/management");
+          break;
+
+        // 👑 SEPARATE: Admin gets their own dashboard
+        case "ADMIN": 
+          navigate("/dashboard/admin");
           break;
           
         default:

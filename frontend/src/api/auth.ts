@@ -131,6 +131,12 @@ export const authAPI = {
     // Admin Only
     getVoteResults: async () => {
         return await api.get('admin/results/');
+    },
+    getTimeline: async () => {
+        return await api.get('admin/timeline/');
+    },
+    setTimeline: async (data: any) => {
+        return await api.post('admin/timeline/', data);
     }
 };
  
