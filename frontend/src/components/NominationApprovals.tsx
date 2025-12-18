@@ -12,8 +12,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
 } from "@mui/material";
+
 import {
   CheckCircle,
   Cancel,
@@ -21,19 +21,23 @@ import {
   History,
   AccessTime,
 } from "@mui/icons-material";
+
+import CloseIcon from "@mui/icons-material/Close"; // ✅ FIXED
+
+
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
- 
+
 const NominationApprovals = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [nominations, setNominations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState<any>(null);
- 
+
   useEffect(() => {
     loadNoms();
   }, [activeTab]);
- 
+
   const loadNoms = async () => {
     setLoading(true);
     try {
@@ -46,7 +50,7 @@ const NominationApprovals = () => {
       setLoading(false);
     }
   };
- 
+
   const handleAction = async (id: number, action: "APPROVE" | "REJECT") => {
     try {
       await authAPI.reviewNomination({ nomination_id: id, action });
@@ -57,11 +61,11 @@ const NominationApprovals = () => {
       toast.error("Action failed");
     }
   };
- 
+
   /** GROUP NOMINATIONS BY NOMINEE */
   const grouped = nominations.reduce((acc: any, nom: any) => {
     const key = nom.nominee_name;
- 
+
     if (!acc[key]) {
       acc[key] = {
         id: nom.id,
@@ -72,18 +76,18 @@ const NominationApprovals = () => {
         list: [],
       };
     }
- 
+
     acc[key].list.push({
       nominator_name: nom.nominator_name,
       reason: nom.reason,
       submitted_at: nom.submitted_at,
     });
- 
+
     return acc;
   }, {});
- 
+
   const groupedList = Object.values(grouped);
- 
+
   return (
     <div className="animate-fadeIn max-w-5xl mx-auto">
       {/* PAGE HEADER */}
@@ -95,7 +99,7 @@ const NominationApprovals = () => {
           Review and approve nominations for your direct reports.
         </Typography>
       </div>
- 
+
       {/* TABS */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 4 }}>
         <Tabs
@@ -118,7 +122,7 @@ const NominationApprovals = () => {
           <Tab icon={<History />} iconPosition="start" label="Approval History" />
         </Tabs>
       </Box>
- 
+
       {/* LOADING / EMPTY STATE / DATA */}
       {loading ? (
         <div className="flex justify-center py-20">
@@ -145,13 +149,14 @@ const NominationApprovals = () => {
               }}
             >
               <CardContent className="flex flex-col md:flex-row justify-between gap-6 p-6">
+                
                 {/* LEFT SIDE — INFO */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <Typography variant="h6" fontWeight="bold">
                       {grp.nominee_name}
                     </Typography>
- 
+
                     <Chip
                       label={grp.nominee_role}
                       size="small"
@@ -162,10 +167,8 @@ const NominationApprovals = () => {
                       }}
                     />
                   </div>
- 
-                  <Typography
-                    sx={{ marginTop: 2, fontWeight: 500 }}
-                  >
+
+                  <Typography sx={{ marginTop: 2, fontWeight: 500 }}>
                     {grp.list.length} nomination(s) received
                     <span
                       onClick={() => setOpenModal(grp)}
@@ -178,17 +181,15 @@ const NominationApprovals = () => {
                         fontWeight: 600,
                         color: "#000",
                         cursor: "pointer",
-                        display: "inline-block"
+                        display: "inline-block",
                       }}
                     >
                       View details
                     </span>
                   </Typography>
- 
- 
                 </div>
- 
-                {/* RIGHT SIDE — APPROVE & REJECT STACKED */}
+
+                {/* RIGHT SIDE — APPROVE & REJECT */}
                 {activeTab === 0 && (
                   <div
                     className="flex flex-col gap-3"
@@ -212,7 +213,7 @@ const NominationApprovals = () => {
                     >
                       Approve
                     </Button>
- 
+
                     <Button
                       variant="outlined"
                       color="error"
@@ -234,7 +235,7 @@ const NominationApprovals = () => {
           ))}
         </div>
       )}
- 
+
       {/* MODAL */}
       <Dialog
         open={!!openModal}
@@ -250,11 +251,25 @@ const NominationApprovals = () => {
             color: "#008080",
             borderBottom: "2px solid #008080",
             pb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           Nominations for {openModal?.nominee_name}
+
+          {/* TOP-RIGHT CLOSE BUTTON */}
+          <CloseIcon
+            onClick={() => setOpenModal(null)}
+            sx={{
+              cursor: "pointer",
+              fontSize: "1.7rem",
+              color: "#444",
+              "&:hover": { color: "#000" },
+            }}
+          />
         </DialogTitle>
- 
+
         <DialogContent sx={{ pb: 1 }}>
           {openModal?.list?.map((item: any, i: number) => (
             <div
@@ -262,18 +277,19 @@ const NominationApprovals = () => {
               style={{
                 marginBottom: "18px",
                 paddingBottom: "12px",
-                borderBottom: "1px solid #e5e5e5",
+                borderBottom:
+                  i !== openModal.list.length - 1 ? "1px solid #e5e5e5" : "none",
               }}
             >
               <Typography sx={{ fontWeight: "bold", color: "#000" }}>
                 Nominated by:{" "}
                 <span style={{ fontWeight: 400 }}>{item.nominator_name}</span>
               </Typography>
- 
+
               <Typography sx={{ color: "#333", mb: 1, wordBreak: "break-word" }}>
                 <b>Reason:</b> {item.reason}
               </Typography>
- 
+
               <Typography
                 variant="caption"
                 sx={{ color: "#008080", fontStyle: "italic" }}
@@ -283,38 +299,9 @@ const NominationApprovals = () => {
             </div>
           ))}
         </DialogContent>
- 
-        {/* Modal Action Buttons */}
-        <DialogActions sx={{ justifyContent: "flex-start", px: 3, pb: 2 }}>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircle />}
-            onClick={() => handleAction(openModal?.id, "APPROVE")}
-            sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
-          >
-            Approve
-          </Button>
- 
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<Cancel />}
-            onClick={() => handleAction(openModal?.id, "REJECT")}
-            sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
-          >
-            Reject
-          </Button>
- 
-          <Button onClick={() => setOpenModal(null)} sx={{ ml: "auto" }}>
-            Close
-          </Button>
-        </DialogActions>
       </Dialog>
     </div>
   );
 };
- 
+
 export default NominationApprovals;
- 
- 

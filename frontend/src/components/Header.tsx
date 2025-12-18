@@ -1,19 +1,38 @@
 import { useState, useRef, useEffect } from "react";
-import Logo from "../assets/Version1-Logo.png"; 
+import Logo from "../assets/Version1-Logo.png";
 import { useAuth } from "../context/AuthContext";
-import { Avatar } from "@mui/material";
-import { Logout, AccountCircle } from "@mui/icons-material"; 
+import {
+  Avatar,
+  IconButton,
+  Badge,
+  Popover,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+} from "@mui/material";
+import {
+  Logout,
+  AccountCircle,
+  NotificationsNone,
+} from "@mui/icons-material";
 import ProfileDialog from "./ProfileDialog";
+import { authAPI } from "../api/auth";
 
 function Header() {
   const { user, logout } = useAuth();
+
   const [open, setOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [notifAnchor, setNotifAnchor] = useState<HTMLElement | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unread, setUnread] = useState(0);
+
   useEffect(() => {
-    const handleClickOutside = (event: any) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
@@ -21,69 +40,121 @@ function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // SAFE ACCESS: Prevent crash if user.username is undefined
-  const username = user?.username || "Guest";
-  const initials = username.substring(0, 2).toUpperCase();
-  const email = user?.email || "";
-  const role = user?.role || "";
+  useEffect(() => {
+    if (user?.username) {
+      loadNotifications();
+    }
+  }, [user?.username]);
+
+  const loadNotifications = async () => {
+    try {
+      const res = await authAPI.getNotifications();
+      setNotifications(res.data);
+      setUnread(res.data.filter((n: any) => !n.is_read).length);
+    } catch (e) {
+      console.error("Notification load failed", e);
+    }
+  };
+
+  const handleNotifClick = async (event: React.MouseEvent<HTMLElement>) => {
+    setNotifAnchor(event.currentTarget);
+
+    const unreadNotifs = notifications.filter(n => !n.is_read);
+    for (const n of unreadNotifs) {
+      await authAPI.markNotificationRead(n.id);
+    }
+    setUnread(0);
+  };
+
+  const handleNotifClose = () => setNotifAnchor(null);
+
+  if (!user) return null;
+
+  // ✅ SAFE INITIALS
+  const username = user?.username ?? "";
+  const initials = username ? username.substring(0, 2).toUpperCase() : "U";
 
   return (
     <>
       <header className="fixed top-0 left-0 w-full h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 z-50">
-        
-        <div className="flex items-center cursor-pointer">
-          <img src={Logo} alt="Version 1" className="h-8 object-contain" />
-        </div>
+        <img src={Logo} alt="Version 1" className="h-8 object-contain" />
 
-        {user && (
-          <div className="relative" ref={menuRef}>
-            <div 
+        <div className="flex items-center gap-6">
+          <IconButton onClick={handleNotifClick}>
+            <Badge badgeContent={unread} color="error">
+              <NotificationsNone sx={{ fontSize: 28, color: "#00A8A8" }} />
+            </Badge>
+          </IconButton>
+
+          <Popover
+            open={Boolean(notifAnchor)}
+            anchorEl={notifAnchor}
+            onClose={handleNotifClose}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            PaperProps={{ sx: { width: 320, borderRadius: 2 } }}
+          >
+            <div className="p-3 font-semibold text-teal-700">Notifications</div>
+            <Divider />
+            <List sx={{ maxHeight: 300, overflowY: "auto" }}>
+              {notifications.length === 0 ? (
+                <ListItem>
+                  <ListItemText primary="No notifications yet" />
+                </ListItem>
+              ) : (
+                notifications.map((n: any) => (
+                  <ListItem key={n.id}>
+                    <ListItemText
+                      primary={n.message}
+                      primaryTypographyProps={{
+                        fontWeight: n.is_read ? "normal" : "bold",
+                      }}
+                    />
+                  </ListItem>
+                ))
+              )}
+            </List>
+          </Popover>
+
+          <div ref={menuRef} className="relative">
+            <div
               onClick={() => setOpen(!open)}
-              className="flex items-center gap-3 cursor-pointer p-1.5 rounded-full hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 cursor-pointer"
             >
-              <div className="text-right hidden md:block">
-                 <p className="text-sm font-semibold text-gray-800 leading-tight">{username}</p>
-                 <p className="text-xs text-teal-600 font-medium">{role}</p>
-              </div>
-              <Avatar 
-                sx={{ bgcolor: "#00A8A8", width: 40, height: 40, fontSize: "1rem", fontWeight: "bold" }}
-              >
-                {initials}
-              </Avatar>
+              <Avatar sx={{ bgcolor: "#00A8A8" }}>{initials}</Avatar>
             </div>
 
             {open && (
-              <div className="absolute right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-xl z-50 animate-fadeIn overflow-hidden">
-                
-                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-                   <p className="font-bold text-gray-800">{username}</p>
-                   <p className="text-xs text-gray-500 truncate">{email}</p>
-                </div>
+              <div className="absolute right-0 mt-3 w-56 bg-white shadow-lg rounded-xl">
+                <button
+                  onClick={() => {
+                    setProfileDialogOpen(true);
+                    setOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2"
+                >
+                  <AccountCircle fontSize="small" />
+                  My Info
+                </button>
 
-                <div className="p-2">
-                   <button 
-                     onClick={() => { setProfileDialogOpen(true); setOpen(false); }}
-                     className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                   >
-                      <AccountCircle fontSize="small" className="text-teal-600"/>
-                      My Info
-                   </button>
-                   
-                   <button 
-                     onClick={logout}
-                     className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1"
-                   >
-                      <Logout fontSize="small" />
-                      Log Out
-                   </button>
-                </div>
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-red-600"
+                >
+                  <Logout fontSize="small" />
+                  Logout
+                </button>
               </div>
             )}
           </div>
-        )}
+        </div>
       </header>
-      
-      <ProfileDialog open={profileDialogOpen} onClose={() => setProfileDialogOpen(false)} user={user} />
+
+      <ProfileDialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        user={user}
+      />
     </>
   );
 }

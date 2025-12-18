@@ -12,16 +12,14 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
 } from "@mui/material";
  
-import { EmojiEvents, Cancel, CheckCircle } from "@mui/icons-material";
+import { EmojiEvents, Cancel } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
+import CloseIcon from "@mui/icons-material/Close";
  
-// YOUR EXACT SHADE
 const TEAL = "#00A8A8";
-const TEAL_HOVER = "#008F8F";
  
 const CommitteeReview = () => {
     const [activeTab, setActiveTab] = useState(0);
@@ -45,9 +43,13 @@ const CommitteeReview = () => {
     const handleDecision = async (id: number, action: "APPROVE" | "REJECT") => {
         try {
             await authAPI.reviewNomination({ nomination_id: id, action });
+ 
             toast.success(
-                action === "APPROVE" ? "Promoted to Finalist!" : "Nomination Rejected"
+                action === "APPROVE"
+                    ? "Promoted to Finalist!"
+                    : "Nomination Rejected"
             );
+ 
             setOpenModal(null);
             loadData();
         } catch (e) {
@@ -55,7 +57,7 @@ const CommitteeReview = () => {
         }
     };
  
-    // GROUP BY NOMINEE
+    // GROUP NOMINATIONS BY NOMINEE
     const grouped = nominations.reduce((acc: any, n: any) => {
         if (!acc[n.nominee_name]) {
             acc[n.nominee_name] = {
@@ -106,8 +108,8 @@ const CommitteeReview = () => {
                 </Tabs>
             </Box>
  
-            {/* CARDS */}
-            <div className="grid grid-cols-1 gap-4">
+            {/* CARDS LIST */}
+            <div className=" flex flex-col gap-2">
                 {groupedList.map((grp: any, index: number) => (
                     <Card
                         key={index}
@@ -116,11 +118,13 @@ const CommitteeReview = () => {
                             borderLeft: `6px solid ${TEAL}`,
                         }}
                     >
-                        <CardContent className="flex flex-col  p-6">
+                        <CardContent className="flex flex-col space-y-0 p-3">
+ 
+ 
                             {/* TOP ROW */}
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-center">
                                 {/* LEFT SIDE */}
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 ">
                                     <Avatar
                                         sx={{
                                             width: 56,
@@ -135,8 +139,6 @@ const CommitteeReview = () => {
                                     </Avatar>
  
                                     <div className="flex flex-col">
- 
-                                        {/* FULL NAME + ROLE IN SAME ROW */}
                                         <div className="flex items-center gap-3">
                                             <Typography variant="h6" fontWeight="bold">
                                                 {grp.nominee_full_name || grp.nominee_name}
@@ -152,25 +154,23 @@ const CommitteeReview = () => {
                                                 }}
                                             />
                                         </div>
- 
                                     </div>
                                 </div>
  
- 
-                                {/* ACTION BUTTONS */}
+                                {/* ACTION BUTTONS (Only in pending tab) */}
                                 {activeTab === 0 && (
                                     <div className="flex flex-col gap-2 min-w-[160px]">
                                         <Button
                                             variant="contained"
                                             sx={{
                                                 bgcolor: "green",
-                                                "&:hover": { bgcolor: "#0b6e0b" },
                                                 color: "white",
                                                 fontWeight: "bold",
                                                 borderRadius: 2,
+                                                "&:hover": { bgcolor: "#0b6e0b" },
                                             }}
-                                            onClick={() => handleDecision(grp.id, "APPROVE")}
                                             startIcon={<EmojiEvents />}
+                                            onClick={() => handleDecision(grp.id, "APPROVE")}
                                         >
                                             Select Finalist
                                         </Button>
@@ -179,8 +179,8 @@ const CommitteeReview = () => {
                                             variant="outlined"
                                             color="error"
                                             startIcon={<Cancel />}
-                                            onClick={() => handleDecision(grp.id, "REJECT")}
                                             sx={{ borderRadius: 2 }}
+                                            onClick={() => handleDecision(grp.id, "REJECT")}
                                         >
                                             Reject
                                         </Button>
@@ -188,9 +188,9 @@ const CommitteeReview = () => {
                                 )}
                             </div>
  
-                            {/* NOMINATIONS COUNT */}
-                            <div className="flex items-center gap-3 text-black font-medium">
-                                <Typography sx={{ fontWeight: 600 }}>
+                            {/* NOMINATION COUNT */}
+                            <div className="flex items-center gap-2 text-black font-medium mt-1">
+                                <Typography sx={{ fontWeight: 400 }}>
                                     {grp.list.length} nomination(s) received
                                 </Typography>
  
@@ -210,13 +210,14 @@ const CommitteeReview = () => {
                 ))}
             </div>
  
-            {/* NO DATA */}
+            {/* EMPTY STATE */}
             {groupedList.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
                     <Typography>No nominations found.</Typography>
                 </div>
             )}
  
+            {/* MODAL */}
             {/* MODAL */}
             <Dialog
                 open={!!openModal}
@@ -229,12 +230,26 @@ const CommitteeReview = () => {
                     sx={{
                         fontSize: "1.5rem",
                         fontWeight: 700,
-                        color: "#00A8A8",
-                        borderBottom: "2px solid #00A8A8",
+                        color: "#008080",
+                        borderBottom: "2px solid #008080",
                         pb: 2,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                     }}
                 >
                     Nominations for {openModal?.nominee_name}
+ 
+                    {/* TOP-RIGHT CLOSE BUTTON */}
+                    <CloseIcon
+                        onClick={() => setOpenModal(null)}
+                        sx={{
+                            cursor: "pointer",
+                            fontSize: "1.7rem",
+                            color: "#444",
+                            "&:hover": { color: "#000" },
+                        }}
+                    />
                 </DialogTitle>
  
                 <DialogContent sx={{ pb: 1 }}>
@@ -244,7 +259,8 @@ const CommitteeReview = () => {
                             style={{
                                 marginBottom: "18px",
                                 paddingBottom: "12px",
-                                borderBottom: "1px solid #e5e5e5",
+                                borderBottom:
+                                    i !== openModal.list.length - 1 ? "1px solid #e5e5e5" : "none",
                             }}
                         >
                             <Typography sx={{ fontWeight: "bold", color: "#000" }}>
@@ -258,46 +274,17 @@ const CommitteeReview = () => {
  
                             <Typography
                                 variant="caption"
-                                sx={{ color: "#00A8A8", fontStyle: "italic" }}
+                                sx={{ color: "#008080", fontStyle: "italic" }}
                             >
                                 {new Date(item.submitted_at).toLocaleString()}
                             </Typography>
                         </div>
                     ))}
                 </DialogContent>
- 
-                {/* Modal Action Buttons */}
-                <DialogActions sx={{ justifyContent: "flex-start", px: 3, pb: 2 }}>
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckCircle />}
-                        onClick={() => handleDecision(openModal?.id, "APPROVE")}
-                        sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
-                    >
-                        Approve
-                    </Button>
- 
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<Cancel />}
-                        onClick={() => handleDecision(openModal?.id, "REJECT")}
-                        sx={{ fontWeight: "bold", textTransform: "none", borderRadius: 2 }}
-                    >
-                        Reject
-                    </Button>
- 
-                    <Button onClick={() => setOpenModal(null)} sx={{ ml: "auto" }}>
-                        Close
-                    </Button>
-                </DialogActions>
             </Dialog>
- 
         </div>
     );
 };
  
 export default CommitteeReview;
- 
  

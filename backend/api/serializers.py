@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
-from .models import Nomination, NominationTimeline
+from .models import Nomination, NominationTimeline,Notification,NOMINATION_CRITERIA
  
 User = get_user_model()
  
@@ -62,29 +62,61 @@ class UserNominationListSerializer(serializers.ModelSerializer):
 class NominationTimelineSerializer(serializers.ModelSerializer):
     class Meta:
         model = NominationTimeline
-        fields = '__all__' 
+        fields = '__all__'
+ 
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = "__all__"
+ 
 # 2. For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
+    # Expects list: [{"category": "Innovation", "metric": "Idea"}, {"category": "Innovation", "metric": "AI"}]
+    selected_metrics = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=True
+    )
+ 
     class Meta:
         model = Nomination
-        fields = ['nominee', 'reason', 'nominator_name', 'nominee_name']  
+        # Exclude 'nominator' from fields because we pass it in views.py
+        fields = ['nominee', 'reason', 'nominator_name', 'nominee_name', 'selected_metrics']
  
-    def create(self, validated_data):
-        request = self.context['request']
-        nominator = request.user
-        nominee = validated_data['nominee']
+    def validate_selected_metrics(self, value):
+        """
+        Enforce:
+        1. List is not empty.
+        2. All items must belong to the SAME category.
+        3. Metrics must be valid for that category.
+        """
+        if not value:
+            raise serializers.ValidationError("You must select at least one metric.")
  
-        validated_data['nominator'] = nominator
+        # 1. Get the category of the first item
+        first_category = value[0].get('category')
        
-        # FIX: Use username if first_name is empty
-        nominator_display = f"{nominator.first_name} {nominator.last_name}".strip()
-        validated_data['nominator_name'] = nominator_display if nominator_display else nominator.username
+        if first_category not in NOMINATION_CRITERIA:
+            raise serializers.ValidationError(f"Invalid category: '{first_category}'")
  
-        nominee_display = f"{nominee.first_name} {nominee.last_name}".strip()
-        validated_data['nominee_name'] = nominee_display if nominee_display else nominee.username
+        # 2. Iterate and validate
+        for item in value:
+            cat = item.get('category')
+            met = item.get('metric')
  
-        return super().create(validated_data)
-   
+            # Enforce Single Category Rule
+            if cat != first_category:
+                 raise serializers.ValidationError(
+                     "You can only select metrics from ONE category per nomination."
+                 )
+ 
+            # Check Metric Validity
+            valid_metrics = NOMINATION_CRITERIA[cat]
+            if met not in valid_metrics:
+                raise serializers.ValidationError(f"'{met}' is not a valid metric for category '{cat}'")
+ 
+        return value
+ 
 class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -114,3 +146,5 @@ class AdminVoteResultSerializer(serializers.ModelSerializer):
             'id', 'nominee_name', 'employee_id', 'employee_role',
             'employee_dept', 'reason', 'status', 'vote_count'
         ]      
+ 
+ 

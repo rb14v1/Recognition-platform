@@ -88,6 +88,31 @@ class User(AbstractUser):
  
         return True, "Allowed"
  
+NOMINATION_CRITERIA = {
+    "Collaboration & Engagement": [
+        "Communication Response", "Community Engagement", "Cross-Team Collaboration",
+        "Employee Engagement", "Knowledge Sharing", "Mentorship", "Team Participation"
+    ],
+    "Customer Impact": [
+        "Critical Project Delivery", "Customer Acquisition", "Customer Satisfaction Score",
+        "Response Time", "Retention Rate", "SLA Compliance"
+    ],
+    "Innovation & Growth": [
+        "AI Tool Implementation", "Digital Transformation", "Idea Implementation",
+        "Market Share", "New Initiatives", "New Revenue Streams",
+        "Product Development", "Research & Development"
+    ],
+    "Performance & Efficiency": [
+        "Cost Savings", "Onboarding Time", "Process Automation",
+        "Project Delivery Speed", "Resource Utilisation", "Task Completion"
+    ],
+    "Quality & Compliance": [
+        "Audit Non-Compliance", "Compliance Score", "Critical Defects",
+        "Cybersecurity Incidents", "Data Accuracy", "Error Rate Reduction",
+        "First-Time Resolution"
+    ]
+}
+ 
 class Nomination(models.Model):
     nominator = models.ForeignKey(
         'User',
@@ -111,7 +136,7 @@ class Nomination(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUBMITTED')
     nominator_name = models.CharField(max_length=100, blank=True, null=True)
     nominee_name = models.CharField(max_length=100, blank=True, null=True)
- 
+    selected_metrics = models.JSONField(default=list, blank=True)
     reason = models.TextField(blank=True, null=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
  
@@ -122,40 +147,40 @@ class Nomination(models.Model):
  
     def __str__(self):
         return f"{self.nominator.username} -> {self.nominee.username}"    
-
+ 
 class NominationTimeline(models.Model):
     name = models.CharField(max_length=50, help_text="e.g., 'Q4 2024 Awards'")
     is_active = models.BooleanField(default=True, help_text="Only one timeline should be active at a time")
-
+ 
     # Phase 1: Employees Nominate
     nomination_start = models.DateTimeField()
     nomination_end = models.DateTimeField()
-
+ 
     # Phase 2: Coordinators Review
     coordinator_start = models.DateTimeField()
     coordinator_end = models.DateTimeField()
-
+ 
     # Phase 3: Committee Selects Finalists
     committee_start = models.DateTimeField()
     committee_end = models.DateTimeField()
-
+ 
     # Phase 4: Voting
     voting_start = models.DateTimeField()
     voting_end = models.DateTimeField()
-
+ 
     def clean(self):
         # Optional: Ensure dates are sequential (Nomination < Coordinator < Committee < Vote)
         if self.nomination_end > self.coordinator_start:
             raise ValidationError("Coordinator review cannot start before Nominations end.")
         if self.coordinator_end > self.committee_start:
             raise ValidationError("Committee review cannot start before Coordinator review ends.")
-    
+   
     def save(self, *args, **kwargs):
         if self.is_active:
             # Ensure no other timeline is active
             NominationTimeline.objects.filter(is_active=True).update(is_active=False)
         super().save(*args, **kwargs)
-
+ 
     def __str__(self):
         return f"{self.name} (Active: {self.is_active})"
  
@@ -174,3 +199,19 @@ class Vote(models.Model):
  
     def __str__(self):
         return f"{self.voter.username} voted for {self.nomination.nominee.username}"
+   
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type = models.CharField(max_length=50, default="INFO")  # NOMINATION / SYSTEM etc
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+ 
+    class Meta:
+        ordering = ['-created_at']
+ 
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+ 
+ 
