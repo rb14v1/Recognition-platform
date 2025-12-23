@@ -103,65 +103,10 @@ const AdminDashboard = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <Typography variant="h4" className="font-bold text-gray-900 tracking-tight">
-            Admin Workspace
-          </Typography>
-          <Typography className="text-gray-500 mt-1">
-            Welcome back, {user?.username}.
+            Final Selection
           </Typography>
         </div>
 
-        <div className="flex gap-3">
-          <Button
-            variant="outlined"
-            startIcon={<TrendingUpIcon />}
-            onClick={() =>
-              navigate("/dashboard/management", {
-                state: { initialTab: "promote", hideSidebar: true },
-              })
-            }
-            sx={{
-              borderColor: "#00A8A8",
-              color: "#00A8A8",
-              fontWeight: "bold",
-              borderRadius: 2,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#e0f2f1", borderColor: "#008f8f" }
-            }}
-          >
-            Manage Job Roles
-          </Button>
-
-          <Button
-            variant="contained"
-            startIcon={<EmojiEventsIcon />}
-            onClick={() => navigate("/dashboard/winners")}
-            sx={{
-              bgcolor: "#00A8A8",
-              color: "white",
-              fontWeight: "bold",
-              borderRadius: 2,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#008f8f" }
-            }}
-          >
-            View Winners
-          </Button>
-          {/* NEW REPORT BUTTON */}
-          <Button
-            variant="contained"
-            startIcon={<AssessmentIcon />}
-            onClick={() => navigate("/dashboard/report")}
-            sx={{
-              bgcolor: "#00A8A8",
-              fontWeight: "bold",
-              borderRadius: 2,
-              "&:hover": { bgcolor: "#008f8f" },
-            }}
-          >
-            Reports
-          </Button>
-
-        </div>
       </div>
 
       {/* TOP 15 */}

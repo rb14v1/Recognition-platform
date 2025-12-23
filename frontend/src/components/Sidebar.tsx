@@ -1,11 +1,12 @@
 import {
   Dashboard as DashboardIcon,
-  People,
-  WorkspacePremium,
+  SupervisorAccount,
+  Groups,
+  Gavel,
+  EmojiEvents,
+  Assessment,
   MenuOpen,
   Menu,
-  TrendingUp,
-  Gavel,
 } from "@mui/icons-material";
 import { Tooltip, IconButton } from "@mui/material";
 
@@ -24,42 +25,51 @@ const Sidebar = ({
   toggleSidebar,
   userRole,
 }: SidebarProps) => {
+  
+  // Base menu
   let menuItems = [
-    { id: "workspace", label: "Dashboard", icon: <DashboardIcon /> },
+    { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
   ];
 
+  // 🚀 COORDINATOR / SUPER USER MENU
   if (userRole === "COORDINATOR") {
     menuItems.push(
-      { id: "team", label: "My Team", icon: <People /> },
-      {
-        id: "add-members",
-        label: "Add Members",
-        icon: <People sx={{ opacity: 0.5 }} />,
+      { 
+        id: "coordinator", 
+        label: "Co-ordinator", 
+        icon: <SupervisorAccount /> 
       },
-      { id: "approvals", label: "Approvals", icon: <WorkspacePremium /> }
+      { 
+        id: "committee", 
+        label: "Committee", 
+        icon: <Groups /> 
+      },
+      { 
+        id: "operations", 
+        label: "Finals",   // ✅ Simple & Apt
+        icon: <Gavel />    
+      },
+      { 
+        id: "winners", 
+        label: "Winners", 
+        icon: <EmojiEvents /> 
+      },
+      { 
+        id: "reports", 
+        label: "Reports", 
+        icon: <Assessment /> 
+      }
     );
   }
-
-  if (["COMMITTEE", "ADMIN"].includes(userRole)) {
-    menuItems.push(
-      { id: "committee-review", label: "Final Review", icon: <Gavel /> }
-    );
-  }
-
-  menuItems.push({
-    id: "promote",
-    label: "Promote Role",
-    icon: <TrendingUp /> },
-  );
 
   return (
     <aside
-      className={`bg-white border-r border-gray-200 fixed h-full z-20 pt-20 transition-all
+      className={`bg-white border-r border-gray-200 fixed h-full z-20 pt-5 transition-all duration-300 ease-in-out
         ${isOpen ? "w-64" : "w-20"}
       `}
     >
       {/* TOGGLE BUTTON */}
-      <div className="flex justify-end px-4 mb-6">
+      <div className="flex justify-end px-4 mb-8">
         <IconButton onClick={toggleSidebar}>
           {isOpen ? <MenuOpen /> : <Menu />}
         </IconButton>
@@ -71,21 +81,23 @@ const Sidebar = ({
           <div
             key={item.id}
             onClick={() => setActiveSection(item.id)}
-            className={`flex items-center gap-4 px-3 py-3 rounded-xl cursor-pointer
+            className={`flex items-center gap-4 px-3 py-3 rounded-xl cursor-pointer transition-colors
               ${
                 activeSection === item.id
-                  ? "bg-teal-50 text-teal-700"
+                  ? "bg-teal-50 text-teal-700 font-semibold"
                   : "text-gray-500 hover:bg-gray-100"
               }
             `}
           >
             <Tooltip title={!isOpen ? item.label : ""} placement="right">
-              <div>{item.icon}</div>
+              <div className="flex items-center justify-center">
+                {item.icon}
+              </div>
             </Tooltip>
 
             <span
-              className={`text-sm font-medium ${
-                isOpen ? "block" : "hidden"
+              className={`text-sm font-medium whitespace-nowrap ${
+                isOpen ? "block opacity-100" : "hidden opacity-0"
               }`}
             >
               {item.label}

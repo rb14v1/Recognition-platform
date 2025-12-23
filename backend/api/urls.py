@@ -2,20 +2,14 @@ from django.urls import path
 from .views import (
     RegisterView,
     CustomLoginView,
-    PromoteUserView,
     UserProfileView,
     NominationOptionsView,
     CreateNominationView,
     NominationStatusView,
     ManageNominationView,
-    UnassignedEmployeesView,
-    PromotableUsersView,
-    TeamMemberDetailView,
-    CoordinatorTeamView,
     CoordinatorNominationView,
     VotingView,
     AdminResultsView,
-    AdminTimelineView,
     WinnersView,
     NotificationListView,
     NotificationMarkReadView,AdminAnalyticsView, AdminReportExportView, NominationOptionsDataView
@@ -30,8 +24,6 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # User
-    path('promote/', PromoteUserView.as_view(), name='promote_user'),
-    path('coordinator/promote-list/', PromotableUsersView.as_view()),
     path('me/', UserProfileView.as_view(), name='user_profile'),
     
     # Nominations
@@ -42,16 +34,12 @@ urlpatterns = [
     
     # Coordinator
     path('coordinator/nominations/', CoordinatorNominationView.as_view(), name='coordinator_nominations'),
-    path('coordinator/team/add/', UnassignedEmployeesView.as_view(), name='coord_add_team'),
-    path('coordinator/team/', CoordinatorTeamView.as_view(), name='coordinator_team'),
-    path('coordinator/team/<int:pk>/', TeamMemberDetailView.as_view(), name='team_member_detail'),
     path('nominate/options-data/', NominationOptionsDataView.as_view(), name='nominate_action'),
  
     
     # Voting & Admin
     path('voting/finalists/', VotingView.as_view(), name='voting_list'),
     path('admin/results/', AdminResultsView.as_view(), name='admin_results'),
-    path('admin/timeline/', AdminTimelineView.as_view(), name='admin_timeline'),
     path('admin/winners/', WinnersView.as_view(), name='all_winners'),
     
     # Notifications ✅ FIXED

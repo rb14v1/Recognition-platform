@@ -1,3 +1,8 @@
+
+
+
+
+
 import { useState, useEffect } from "react";
 import {
     Card,
@@ -14,14 +19,14 @@ import {
     DialogContent,
 } from "@mui/material";
 
-import { EmojiEvents, Cancel } from "@mui/icons-material";
+import { CheckCircle, Cancel, History, AccessTime } from "@mui/icons-material"; // Changed icon to CheckCircle for Coordinators
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import CloseIcon from "@mui/icons-material/Close";
 
 const TEAL = "#00A8A8";
 
-const CommitteeReview = () => {
+const CoordinatorNomination = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [nominations, setNominations] = useState<any[]>([]);
     const [openModal, setOpenModal] = useState<any>(null);
@@ -32,10 +37,8 @@ const CommitteeReview = () => {
 
     const loadData = async () => {
         try {
-            // 🔥 UPDATED: Request specific "committee_pending" list
-            // This ensures we get the ones the Coordinator just approved!
-            const filter = activeTab === 0 ? "committee_pending" : "history";
-
+            const filter = activeTab === 0 ? "pending" : "history";
+            // Backend sends all SUBMITTED nominations since you are a Coordinator
             const res = await authAPI.getCoordinatorNominations(filter);
             setNominations(res.data);
         } catch (e) {
@@ -49,18 +52,14 @@ const CommitteeReview = () => {
 
             toast.success(
                 action === "APPROVE"
-                    ? "Promoted to Finalist!"
+                    ? "Nomination Shortlisted!"
                     : "Nomination Rejected"
             );
 
             setOpenModal(null);
             loadData();
-        } catch (e: any) {
-             if (e.response?.data?.error) {
-                toast.error(e.response.data.error); // Catch "Limit 15" error
-            } else {
-                toast.error("Action failed");
-            }
+        } catch (e) {
+            toast.error("Action failed");
         }
     };
 
@@ -71,7 +70,7 @@ const CommitteeReview = () => {
                 nominee_name: n.nominee_name,
                 nominee_role: n.nominee_role,
                 nominee_dept: n.nominee_dept,
-                nominee_full_name: n.nominee_name,
+                nominee_full_name: n.nominee_name, // fallback
                 id: n.id,
                 list: [],
                 status: n.status,
@@ -93,10 +92,10 @@ const CommitteeReview = () => {
             {/* HEADER */}
             <div className="mb-6">
                 <Typography variant="h5" fontWeight="bold" className="text-gray-900">
-                    Committee Evaluation
+                    Coordinator Approvals
                 </Typography>
                 <Typography variant="body2" className="text-gray-500">
-                    Review candidates approved by Coordinators. Select finalists for the Admin vote.
+                    Review incoming nominations and shortlist valid candidates.
                 </Typography>
             </div>
 
@@ -111,8 +110,8 @@ const CommitteeReview = () => {
                         "& .Mui-selected": { color: TEAL + " !important" },
                     }}
                 >
-                    <Tab label="Review Pool" />
-                    <Tab label="Decision History" />
+                    <Tab icon={<AccessTime />} iconPosition="start" label="Pending Reviews" />
+                    <Tab icon={<History />} iconPosition="start" label="Approval History" />
                 </Tabs>
             </Box>
 
@@ -169,16 +168,16 @@ const CommitteeReview = () => {
                                         <Button
                                             variant="contained"
                                             sx={{
-                                                bgcolor: "green",
+                                                bgcolor: "green", // Keep Green for positive action
                                                 color: "white",
                                                 fontWeight: "bold",
                                                 borderRadius: 2,
                                                 "&:hover": { bgcolor: "#0b6e0b" },
                                             }}
-                                            startIcon={<EmojiEvents />}
+                                            startIcon={<CheckCircle />}
                                             onClick={() => handleDecision(grp.id, "APPROVE")}
                                         >
-                                            Select Finalist
+                                            Approve
                                         </Button>
 
                                         <Button
@@ -277,4 +276,4 @@ const CommitteeReview = () => {
     );
 };
 
-export default CommitteeReview;
+export default CoordinatorNomination;

@@ -11,7 +11,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
  
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'employee_id','employee_dept','employee_role','manager_name']
+        fields = ['username', 'email', 'password', 'employee_id','employee_dept','employee_role']
         # Note: 'role' is excluded so they can't set it themselves.
  
     def create(self, validated_data):
@@ -115,13 +115,7 @@ class NominationSerializer(serializers.ModelSerializer):
             if met not in valid_metrics:
                 raise serializers.ValidationError(f"'{met}' is not a valid metric for category '{cat}'")
  
-        return value
- 
-class TeamMemberSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'employee_id', 'employee_dept', 'employee_role', 'role', 'location']    
-       
+        return value 
 class FinalistSerializer(serializers.ModelSerializer):
     nominee_name = serializers.CharField(source='nominee.username')
     nominee_dept = serializers.CharField(source='nominee.employee_dept')
@@ -145,6 +139,4 @@ class AdminVoteResultSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'nominee_name', 'employee_id', 'employee_role',
             'employee_dept', 'reason', 'status', 'vote_count'
-        ]      
- 
- 
+        ]       

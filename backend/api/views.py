@@ -17,11 +17,9 @@ from .serializers import (
     UserNominationListSerializer,
     NominationSerializer,
     CustomLoginSerializer,
-    TeamMemberSerializer,
     AdminVoteResultSerializer,
     FinalistSerializer,
     NominationTimelineSerializer
-    
 )
 from .models import Nomination, NominationTimeline, NOMINATION_CRITERIA
 from .serializers import NotificationSerializer
@@ -34,75 +32,7 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
  
 class CustomLoginView(TokenObtainPairView):
-    serializer_class = CustomLoginSerializer
-   
-class PromoteUserView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
- 
-    def post(self, request):
-        target_id = request.data.get('user_id_to_promote')
-        new_role = request.data.get('new_role')
- 
-        # 1. Get the target user first
-        try:
-            target_user = User.objects.get(id=target_id)
-        except User.DoesNotExist:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
- 
-        # 2. Ask the Model if this is allowed (Passing the target_user object)
-        is_allowed, message = request.user.can_promote(target_user, new_role)
- 
-        if not is_allowed:
-            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
- 
-        # 3. Execute
-        target_user.role = new_role
-        target_user.save()
- 
-        return Response({
-            "message": f"Success! {target_user.username} is now a {new_role}."
-        })
- 
-class PromotableUsersView(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = TeamMemberSerializer # Reusing existing serializer
- 
-    def get_queryset(self):
-        user = self.request.user
-        my_level = user.get_role_level()
-       
-        # 1. Hierarchy Logic: Only show people with lower rank
-        allowed_roles = [
-            role for role, level in user.ROLE_HIERARCHY.items()
-            if level < my_level
-        ]
-        queryset = User.objects.filter(role__in=allowed_roles).exclude(id=user.id)
-       
-        # 2. Search (Name OR ID)
-        search_query = self.request.query_params.get('search', '').strip()
-        if search_query:
-            queryset = queryset.filter(
-                Q(username__icontains=search_query) | 
-                Q(employee_id__icontains=search_query)
-            )
-
-        # 3. Filter: Department
-        dept = self.request.query_params.get('dept')
-        if dept:
-            queryset = queryset.filter(employee_dept__iexact=dept)
-
-        # 4. Filter: Job Role
-        role = self.request.query_params.get('role')
-        if role:
-            queryset = queryset.filter(employee_role__iexact=role)
-
-        # 5. Filter: Location
-        loc = self.request.query_params.get('location')
-        if loc:
-            queryset = queryset.filter(location__iexact=loc)
-           
-        return queryset        
-       
+    serializer_class = CustomLoginSerializer    
 class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserProfileSerializer
@@ -297,73 +227,7 @@ class ManageNominationView(APIView):
  
         nomination.delete()
         return Response({"message": "Nomination withdrawn successfully."})
- 
- 
-class CoordinatorTeamView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
- 
-    def get(self, request):
-        # Base: Get direct reports
-        queryset = request.user.team_members.all()
- 
-        # 1. Unified Search (Name OR ID)
-        search_query = request.query_params.get('search', '').strip()
-        if search_query:
-            queryset = queryset.filter(
-                Q(username__icontains=search_query) | 
-                Q(employee_id__icontains=search_query)
-            )
 
-        # 2. Filter: Department
-        dept = request.query_params.get('dept')
-        if dept:
-            queryset = queryset.filter(employee_dept__iexact=dept)
-
-        # 3. Filter: Job Role
-        role = request.query_params.get('role')
-        if role:
-            queryset = queryset.filter(employee_role__iexact=role)
-
-        # 4. Filter: Location
-        loc = request.query_params.get('location')
-        if loc:
-            queryset = queryset.filter(location__iexact=loc)
- 
-        serializer = TeamMemberSerializer(queryset, many=True)
-        return Response(serializer.data)
- 
-    def post(self, request):
-        data = request.data
-        try:
-            # Create user and assign CURRENT user as manager
-            User.objects.create_user(
-                username=data['username'],
-                email=data['email'],
-                password=data['password'],
-                employee_id=data['employee_id'],
-                role=User.EMPLOYEE,
-                manager=request.user
-            )
-            return Response({"message": "Employee added to your team!"}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
- 
-# 2. UPDATE EMPLOYEE (Add Dept/Title or Promote)
-class TeamMemberDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
- 
-    def put(self, request, pk):
-        try:
-            member = User.objects.get(id=pk, manager=request.user)
-        except User.DoesNotExist:
-            return Response({"error": "Member not found in your team"}, status=404)
- 
-        member.employee_dept = request.data.get('employee_dept', member.employee_dept)
-        member.employee_role = request.data.get('employee_role', member.employee_role)
-       
-        member.save()
-        return Response({"message": "Member updated successfully"})
- 
 
 # -----------------------------------------
 # UPDATED VIEW
@@ -381,31 +245,37 @@ class CoordinatorNominationView(APIView):
 
     def get(self, request):
         filter_type = request.query_params.get("filter", "pending")
-        user_role = request.user.role
-
+        
+        # Base query
         query = Nomination.objects.select_related("nominee", "nominator").order_by("-submitted_at")
 
-        # COMMITTEE VIEW
-        if user_role == "COMMITTEE":
-            if filter_type == "history":
-                nominations = query.filter(status__in=["COMMITTEE_APPROVED", "REJECTED", "AWARDED"])
-            else:
-                nominations = query.filter(status="APPROVED")
+        # ------------------------------------------------------
+        # 1. COORDINATOR PAGE (Step 1: New Submissions)
+        # ------------------------------------------------------
+        if filter_type == "coordinator_pending":
+            # Show only items waiting for Coordinator approval
+            nominations = query.filter(status="SUBMITTED")
 
-        # COORDINATOR VIEW
+        # ------------------------------------------------------
+        # 2. COMMITTEE PAGE (Step 2: Shortlisted/Approved)
+        # ------------------------------------------------------
+        elif filter_type == "committee_pending":
+            # Show items that were APPROVED by Coordinator, waiting for Committee
+            nominations = query.filter(status="APPROVED")
+
+        # ------------------------------------------------------
+        # 3. HISTORY (Completed items)
+        # ------------------------------------------------------
+        elif filter_type == "history":
+            nominations = query.filter(status__in=["REJECTED", "COMMITTEE_APPROVED", "AWARDED"])
+            
+        # Fallback (Safety)
         else:
-            if filter_type == "history":
-                nominations = query.filter(
-                    nominee__manager=request.user,
-                    status__in=["APPROVED", "REJECTED", "COMMITTEE_APPROVED", "AWARDED"]
-                )
-            else:
-                nominations = query.filter(nominee__manager=request.user, status="SUBMITTED")
+            nominations = query.filter(status="SUBMITTED")
 
         data = [
             {
                 "id": n.id,
-                "nominee_id": n.nominee.id,
                 "nominee_name": n.nominee.username,
                 "nominee_role": n.nominee.employee_role or "Employee",
                 "nominee_dept": n.nominee.employee_dept or "General",
@@ -419,100 +289,88 @@ class CoordinatorNominationView(APIView):
 
         return Response(data)
 
+    # ... keep your existing post() method as is ...
+
+    def get_next_stage_label(self, status):
+        """Helper to tell frontend what the button should say"""
+        if status == "SUBMITTED": return "Approve to Shortlist"
+        if status == "APPROVED": return "Select as Finalist"
+        if status == "COMMITTEE_APPROVED": return "Grant Award"
+        return "Completed"
+
     # --------------------------------------------------------
-    # POST → APPROVE / REJECT / UNDO + Notification
+    # POST → HANDLES ALL TRANSITIONS
     # --------------------------------------------------------
     def post(self, request):
         nom_id = request.data.get("nomination_id")
-        action = request.data.get("action")
-        user_role = request.user.role
+        action = request.data.get("action") # APPROVE, REJECT, UNDO
 
-        if action not in ("APPROVE", "REJECT", "UNDO"):
-            return Response({"error": "Invalid action"}, status=400)
+        if request.user.role != "COORDINATOR":
+            return Response({"error": "Unauthorized. Only Coordinators can manage nominations."}, status=403)
 
         try:
-            nom = Nomination.objects.select_related("nominee").get(id=nom_id)
+            nom = Nomination.objects.get(id=nom_id)
         except Nomination.DoesNotExist:
             return Response({"error": "Nomination not found"}, status=404)
 
-        nominee = nom.nominee  # who receives notifications
+        nominee = nom.nominee
 
         # ======================================================
-        # 🔥 ADMIN LOGIC
+        # 🔥 MASTER LOGIC (Coordinator does it all)
         # ======================================================
-        if user_role == "ADMIN":
-            if action == "APPROVE":
-                updated = Nomination.objects.filter(nominee=nominee).update(status="AWARDED")
-                send_notification(nominee, "🎉 Congratulations! You have won the award.")
-                return Response({"message": f"{updated} row(s) marked AWARDED"})
 
-            elif action == "REJECT":
-                updated = Nomination.objects.filter(nominee=nominee).update(status="REJECTED")
-                send_notification(nominee, "Your nomination was rejected by the admin.")
-                return Response({"message": f"{updated} row(s) rejected"})
+        if action == "REJECT":
+            # Rejecting works at ANY stage
+            nom.status = "REJECTED"
+            nom.save()
+            # send_notification(nominee, "Your nomination has been rejected.")
+            return Response({"message": "Nomination rejected"})
 
-            elif action == "UNDO":
-                updated = Nomination.objects.filter(nominee=nominee, status="AWARDED") \
-                                            .update(status="COMMITTEE_APPROVED")
-                send_notification(nominee, "Your award result was reverted back to finalist stage.")
-                return Response({"message": "Reverted back to finalist stage"})
+        elif action == "UNDO":
+            # Logic to step back 1 level (optional, but good for UX)
+            if nom.status == "AWARDED":
+                nom.status = "COMMITTEE_APPROVED"
+            elif nom.status == "COMMITTEE_APPROVED":
+                nom.status = "APPROVED"
+            elif nom.status == "APPROVED":
+                nom.status = "SUBMITTED"
+            else:
+                return Response({"error": "Cannot undo from this stage"}, status=400)
+            
+            nom.save()
+            return Response({"message": f"Undo successful. Reverted to {nom.status}"})
 
-        # ======================================================
-        # 🔥 COORDINATOR LOGIC
-        # ======================================================
-        if user_role == "COORDINATOR":
-            if nominee.manager != request.user:
-                return Response({"error": "Not your team member"}, status=403)
+        elif action == "APPROVE":
+            # 🚀 STAGE 1: SUBMITTED -> APPROVED (Manager/Coordinator Approval)
+            if nom.status == "SUBMITTED":
+                nom.status = "APPROVED"
+                nom.save()
+                return Response({"message": "Nomination Shortlisted (Stage 1 Complete)"})
 
-            if action == "APPROVE":
-                updated = Nomination.objects.filter(nominee=nominee, status="SUBMITTED") \
-                                            .update(status="APPROVED")
-                if updated:
-                    send_notification(nominee, "Your nomination was approved by your coordinator.")
-                return Response({"message": f"{updated} nomination(s) approved"})
-
-            elif action == "REJECT":
-                updated = Nomination.objects.filter(nominee=nominee, status="SUBMITTED") \
-                                            .update(status="REJECTED")
-                if updated:
-                    send_notification(nominee, "Your nomination was rejected by your coordinator.")
-                return Response({"message": f"{updated} nomination(s) rejected"})
-
-        # ======================================================
-        # 🔥 COMMITTEE LOGIC
-        # ======================================================
-        if user_role == "COMMITTEE":
-
-            approved_count = Nomination.objects.filter(nominee=nominee, status="APPROVED").count()
-            if approved_count == 0:
-                return Response({"error": "No coordinator-approved nominations found"}, status=400)
-
-            if action == "APPROVE":
-                finalist_count = (
-                    Nomination.objects.filter(status="COMMITTEE_APPROVED")
-                    .values("nominee")
-                    .distinct()
-                    .count()
-                )
+            # 🚀 STAGE 2: APPROVED -> COMMITTEE_APPROVED (Finalist Selection)
+            elif nom.status == "APPROVED":
+                # Check the 15 limit rule
+                finalist_count = Nomination.objects.filter(status="COMMITTEE_APPROVED").count()
                 if finalist_count >= 15:
-                    return Response({"error": "Finalist limit reached"}, status=400)
+                    return Response({"error": "Finalist limit (15) reached. Cannot approve more."}, status=400)
+                
+                nom.status = "COMMITTEE_APPROVED"
+                nom.save()
+                # send_notification(nominee, "🎉 You have been selected as a finalist!")
+                return Response({"message": "Nomination marked as Finalist (Stage 2 Complete)"})
 
-                updated = Nomination.objects.filter(nominee=nominee, status="APPROVED") \
-                                            .update(status="COMMITTEE_APPROVED")
+            # 🚀 STAGE 3: COMMITTEE_APPROVED -> AWARDED (Admin/Winner)
+            elif nom.status == "COMMITTEE_APPROVED":
+                nom.status = "AWARDED"
+                nom.save()
+                # send_notification(nominee, "🎉 Congratulations! You have won the award.")
+                return Response({"message": "Award Granted (Process Complete)"})
 
-                send_notification(nominee, "🎉 You have been selected as a finalist!")
-                return Response({"message": f"{updated} nomination(s) marked as FINALIST"})
+            else:
+                return Response({"error": "Nomination is already completed or rejected"}, status=400)
 
-            elif action == "REJECT":
-                updated = Nomination.objects.filter(nominee=nominee, status="APPROVED") \
-                                            .update(status="REJECTED")
-
-                send_notification(nominee, "Your nomination was rejected by the committee.")
-                return Response({"message": f"{updated} nomination(s) rejected"})
-
-        return Response({"error": "Unauthorized"}, status=403)
-
-
+        return Response({"error": "Invalid Action"}, status=400)
+    
 class NotificationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -532,57 +390,7 @@ class NotificationMarkReadView(APIView):
             return Response({"message": "Notification marked as read"})
         except Notification.DoesNotExist:
             return Response({"error": "Notification not found"}, status=404)
-
-
-class UnassignedEmployeesView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
- 
-    def get(self, request):
-        # Base Query: Find employees with NO manager
-        queryset = User.objects.filter(
-            manager__isnull=True,
-            role='EMPLOYEE'
-        ).exclude(id=request.user.id)
- 
-        # 1. Unified Search (Name OR Employee ID)
-        search_query = request.query_params.get('search', '').strip()
-        if search_query:
-            queryset = queryset.filter(
-                Q(username__icontains=search_query) | 
-                Q(employee_id__icontains=search_query)
-            )
-
-        # 2. Filter by Dept
-        dept_filter = request.query_params.get('dept', None)
-        if dept_filter:
-            queryset = queryset.filter(employee_dept__iexact=dept_filter)
-
-        # 3. Filter by Role (Job Title)
-        role_filter = request.query_params.get('role', None)
-        if role_filter:
-            queryset = queryset.filter(employee_role__iexact=role_filter)
-
-        # 4. Filter by Location
-        loc_filter = request.query_params.get('location', None)
-        if loc_filter:
-            queryset = queryset.filter(location__iexact=loc_filter)
- 
-        # Use TeamMemberSerializer since it has the fields we need
-        serializer = TeamMemberSerializer(queryset, many=True)
-        return Response(serializer.data)
- 
-    def post(self, request):
-        # CLAIM: Link selected users to the current Coordinator
-        user_ids = request.data.get('user_ids', [])
-        if not user_ids:
-            return Response({"error": "No users selected"}, status=status.HTTP_400_BAD_REQUEST)
- 
-        # Security: Only claim users who actually have no manager
-        users_to_update = User.objects.filter(id__in=user_ids, manager__isnull=True)
-        updated_count = users_to_update.update(manager=request.user)
-       
-        return Response({"message": f"Successfully added {updated_count} employees to your team."})
-       
+           
 class VotingView(APIView):
     permission_classes = [permissions.IsAuthenticated]
  
@@ -626,21 +434,33 @@ class VotingView(APIView):
         except Nomination.DoesNotExist:
             return Response({"error": "Invalid finalist selected."}, status=404)
  
- 
-# 3. NEW: Admin Results View
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from django.db.models import Count, F
+from django.db.models.functions import TruncDate, TruncMonth
+from django.http import HttpResponse
+from openpyxl import Workbook
+from .models import Nomination, User  # Ensure User is imported
+from .serializers import AdminVoteResultSerializer # Ensure this is imported
+# from .utils import check_timeline_validity # Ensure this is imported if used
+
+# ========================= ADMIN RESULTS VIEW =========================
 class AdminResultsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
- 
-    def get(self, request):
 
-        if request.user.role != 'ADMIN':
+    def get(self, request):
+        # 🔓 UPDATE: Allow COORDINATOR
+        if request.user.role != 'ADMIN' and request.user.role != 'COORDINATOR':
             return Response({"error": "Unauthorized"}, status=403)
+
         results = Nomination.objects.filter(
             status__in=['COMMITTEE_APPROVED', 'AWARDED']
         ).annotate(
             vote_count=Count('votes')
-        ).order_by('-vote_count')  
-        # 🔥 NEW: remove duplicates by nominee
+        ).order_by('-vote_count')
+        
+        # 🔥 remove duplicates by nominee
         unique = {}
         for r in results:
             if r.nominee.id not in unique:
@@ -650,15 +470,16 @@ class AdminResultsView(APIView):
         serializer = AdminVoteResultSerializer(results, many=True)
         return Response(serializer.data)
 
-    # 🔥 NEW: Endpoint to finalize winners
+    # 🔥 Endpoint to finalize winners
     def post(self, request):
-        if request.user.role != 'ADMIN':
+        # 🔓 UPDATE: Allow COORDINATOR
+        if request.user.role != 'ADMIN' and request.user.role != 'COORDINATOR':
             return Response({"error": "Unauthorized"}, status=403)
 
-        # 🔥 TIME CHECK
-        is_valid, msg = check_timeline_validity('ADMIN_RESULTS')
-        if not is_valid:
-            return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
+        # 🔥 TIME CHECK (Assuming 'ADMIN_RESULTS' refers to the final stage)
+        # is_valid, msg = check_timeline_validity('ADMIN_RESULTS')
+        # if not is_valid:
+        #    return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
 
         # Logic to mark winner
         winner_id = request.data.get('nomination_id')
@@ -669,43 +490,18 @@ class AdminResultsView(APIView):
             return Response({"message": "Winner declared!"})
         except Nomination.DoesNotExist:
             return Response({"error": "Nomination not found"}, status=404)
-        
-class AdminTimelineView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        if request.user.role != 'ADMIN':
-            return Response({"error": "Unauthorized"}, status=403)
-        
-        # Get the active timeline, or the latest one
-        timeline = NominationTimeline.objects.filter(is_active=True).first()
-        if not timeline:
-            return Response({"message": "No active timeline found.", "data": None})
-        
-        serializer = NominationTimelineSerializer(timeline)
-        return Response(serializer.data)
 
-    def post(self, request):
-        if request.user.role != 'ADMIN':
-            return Response({"error": "Unauthorized"}, status=403)
-
-        # Deactivate any existing active timelines first to keep it clean
-        NominationTimeline.objects.filter(is_active=True).update(is_active=False)
-
-        serializer = NominationTimelineSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(is_active=True)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)        
-    
-
- 
+# ========================= WINNERS VIEW =========================
 class WinnersView(APIView):
     permission_classes = [permissions.IsAuthenticated]
- 
+
     def get(self, request):
-        if request.user.role != 'ADMIN':
-            return Response({"error": "Unauthorized"}, status=403)  
+        # 🔓 UPDATE: Allow COORDINATOR (and Admin)
+        # Note: If regular employees need to see winners, remove this check entirely.
+        if request.user.role != 'ADMIN' and request.user.role != 'COORDINATOR':
+             return Response({"error": "Unauthorized"}, status=403)  
+        
         coordinator_winners = Nomination.objects.filter(
             status__in=['APPROVED', 'COMMITTEE_APPROVED', 'AWARDED']
         )    
@@ -713,6 +509,7 @@ class WinnersView(APIView):
             status__in=['COMMITTEE_APPROVED', 'AWARDED']
         )  
         final_winner = Nomination.objects.filter(status='AWARDED').first()  
+
         # 🔥 REMOVE DUPLICATES — GROUP BY NOMINEE
         def dedupe(queryset):
             unique = {}
@@ -720,52 +517,74 @@ class WinnersView(APIView):
                 if n.nominee.id not in unique:
                     unique[n.nominee.id] = n
             return list(unique.values())  
+
         coordinator_winners = dedupe(coordinator_winners)
         committee_winners = dedupe(committee_winners)  
+
         def serialize_nom(n):
+            if not n: return None
             return {
                 "username": n.nominee.username,
-                "employee_id": n.nominee.employee_id,
+                "employee_id": getattr(n.nominee, 'employee_id', n.nominee.id),
                 "employee_role": n.nominee.employee_role,
                 "employee_dept": n.nominee.employee_dept,
             }  
+
         return Response({
             "final_winner": serialize_nom(final_winner) if final_winner else None,
             "committee_winners": [serialize_nom(n) for n in committee_winners],
             "coordinator_winners": [serialize_nom(n) for n in coordinator_winners],
         })
 
+
 # ========================= ANALYTICS (DASHBOARD) =========================
 class AdminAnalyticsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != 'ADMIN':
+        # 🔓 ALLOW COORDINATOR ACCESS
+        if request.user.role != 'ADMIN' and request.user.role != 'COORDINATOR':
             return Response({"error": "Unauthorized"}, status=403)
 
+        # ----------------------------------------------------
+        # 1. SUMMARY METRICS
+        # ----------------------------------------------------
         total_nominations = Nomination.objects.count()
+
+        # ✅ FIXED: Coordinator Approved includes everything downstream
+        # Note: If you do NOT want "REJECTED" to count as "Approved", remove it from this list.
         coordinator_approved = Nomination.objects.filter(
             status__in=[
                 'APPROVED',
                 'COMMITTEE_APPROVED',
                 'AWARDED',
-                'REJECTED'
+                'REJECTED' 
             ]
         ).count()
+
         total_rejections = Nomination.objects.filter(status='REJECTED').count()
+        
+        # Employee Engagement Stats
         total_employees = User.objects.filter(role='EMPLOYEE').count()
         employees_who_nominated = Nomination.objects.values('nominator').distinct().count()
         employees_not_nominated = total_employees - employees_who_nominated
- 
 
-        committee_finalists = Nomination.objects.filter(status='COMMITTEE_APPROVED').count()
+        # 🔥 FIXED: Committee Finalists now includes Winners (AWARDED)
+        # Logic: A winner is still a finalist. This prevents the count from dropping.
+        committee_finalists = Nomination.objects.filter(
+            status__in=['COMMITTEE_APPROVED', 'AWARDED']
+        ).count()
+
         final_winner = (Nomination.objects.filter(status='AWARDED').values('nominee').distinct().count())
 
-
+        # ----------------------------------------------------
+        # 2. DEPARTMENT STATS
+        # ----------------------------------------------------
         dept_stats = (
             Nomination.objects
             .values('nominee__employee_dept')
             .annotate(count=Count('id'))
+            .order_by('-count')
         )
 
         department_stats = [
@@ -773,6 +592,9 @@ class AdminAnalyticsView(APIView):
             for d in dept_stats
         ]
 
+        # ----------------------------------------------------
+        # 3. DAILY TREND (Line Chart)
+        # ----------------------------------------------------
         daily_trend = (
             Nomination.objects
             .annotate(day=TruncDate("submitted_at"))
@@ -783,6 +605,9 @@ class AdminAnalyticsView(APIView):
 
         daily_trend_data = [{"date": d["day"], "count": d["count"]} for d in daily_trend]
 
+        # ----------------------------------------------------
+        # 4. MONTHLY TREND (Optional/Extra)
+        # ----------------------------------------------------
         monthly_trend = (
             Nomination.objects
             .annotate(month=TruncMonth("submitted_at"))
@@ -791,32 +616,32 @@ class AdminAnalyticsView(APIView):
             .order_by("month")
         )
 
-        trend_data = [{"month": m["month"].strftime("%Y-%m"), "count": m["count"]} for m in monthly_trend]
+        trend_data = [{"month": m["month"].strftime("%Y-%m") if m["month"] else "Unknown", "count": m["count"]} for m in monthly_trend]
 
+        # ----------------------------------------------------
+        # RESPONSE
+        # ----------------------------------------------------
         return Response({
             "summary": {
                 "total_nominations": total_nominations,
                 "coordinator_approved": coordinator_approved,
-                "committee_finalists": committee_finalists,
+                "committee_finalists": committee_finalists, # ✅ Corrected count
                 "final_winner": final_winner,
                 "total_rejections": total_rejections,
                 "employees_not_nominated": employees_not_nominated,
- 
             },
             "department_stats": department_stats,
             "daily_trend": daily_trend_data,
             "trend_data": trend_data
         })
 
-
 # ========================= REPORTS (MANAGEMENT / EXPORT) =========================
-from django.http import HttpResponse
-
 class AdminReportExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != "ADMIN":
+        # 🔓 UPDATE: Allow COORDINATOR
+        if request.user.role != "ADMIN" and request.user.role != 'COORDINATOR':
             return Response({"error": "Unauthorized"}, status=403)
 
         wb = Workbook()
@@ -848,13 +673,13 @@ class AdminReportExportView(APIView):
             "Total Rejections",
             Nomination.objects.filter(status="REJECTED").count()
         ])
-        total_employees = User.objects.filter(role=User.EMPLOYEE).count()
+        
+        # Using string 'EMPLOYEE' for consistency with Analytics view
+        total_employees = User.objects.filter(role='EMPLOYEE').count() 
         employees_who_nominated = Nomination.objects.values("nominator").distinct().count()
         employees_not_nominated = total_employees - employees_who_nominated
 
         ws.append(["Employees Not Nominated", employees_not_nominated])
-
-
 
         # ===================== SHEET 2: DEPARTMENT ANALYTICS =====================
         ws2 = wb.create_sheet(title="Department Analytics")
@@ -874,7 +699,8 @@ class AdminReportExportView(APIView):
         ws3.append(["Employee", "Department", "Stage", "Action By", "Date"])
 
         nominations = Nomination.objects.select_related(
-            "nominee", "nominator", "nominee__manager"
+            "nominee", "nominator"
+            # Removed "nominee__manager" from select_related to prevent errors if relation doesn't exist
         )
 
         for n in nominations:
@@ -886,12 +712,16 @@ class AdminReportExportView(APIView):
                 n.submitted_at.strftime("%Y-%m-%d"),
             ])
 
-            if n.status in ["APPROVED", "COMMITTEE_APPROVED", "AWARDED"] and n.nominee.manager:
+            # Coordinator Approval Logic 
+            # (Note: Since Coordinators approve anyone, 'manager' might not be the approver, 
+            # but we record it if the relationship exists)
+            if n.status in ["APPROVED", "COMMITTEE_APPROVED", "AWARDED"]:
+                 # Just logging "Coordinator" generically since specific approver isn't stored on Nomination model in this snippet
                 ws3.append([
                     n.nominee.username,
                     n.nominee.employee_dept,
                     "Coordinator Approval",
-                    n.nominee.manager.username,
+                    "Coordinator", 
                     n.submitted_at.strftime("%Y-%m-%d"),
                 ])
 
@@ -909,7 +739,7 @@ class AdminReportExportView(APIView):
                     n.nominee.username,
                     n.nominee.employee_dept,
                     "Final Winner",
-                    "Admin",
+                    "Coordinator/Admin",
                     n.submitted_at.strftime("%Y-%m-%d"),
                 ])
 

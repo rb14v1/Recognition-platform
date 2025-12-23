@@ -91,23 +91,6 @@ export const authAPI = {
         api.post(`/notifications/${id}/read/`),
 
     // TEAM
-    getMyTeam: () => api.get("/coordinator/team/"),
-    searchUnassigned: (query: string, filters: any) => {
-        const queryString = buildQueryParams({
-            search: query,
-            dept: filters?.dept,
-            role: filters?.role,
-            location: filters?.location,
-        });
-        return api.get(`/coordinator/team/add/?${queryString}`);
-    },
-
-    linkEmployeesToTeam: (userIds: number[]) =>
-        api.post("/coordinator/team/add/", { user_ids: userIds }),
-
-    updateTeamMember: (id: number, data: any) =>
-        api.put(`/coordinator/team/${id}/`, data),
-
     // APPROVALS
     getCoordinatorNominations: (
         filter: "pending" | "history" = "pending"
