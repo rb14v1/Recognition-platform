@@ -78,10 +78,6 @@ class NominationOptionsView(generics.ListAPIView):
      
 def check_timeline_validity(phase):
     return True, "Allowed"
-   
-def send_notification(user, message):
-    from .models import Notification
-    Notification.objects.create(user=user, message=message)
 
 # NEW: The Action to Submit Nomination
 # 1. NOMINATING (Employees)
@@ -172,12 +168,6 @@ class ManageNominationView(APIView):
         if serializer.is_valid():
             # 🔥 FIX: Explicitly pass the nominator here to prevent IntegrityError
             nomination = serializer.save(nominator=request.user)
- 
-            # 🔔 SEND NOTIFICATION
-            send_notification(
-                nomination.nominee,
-                f"🎉 You have been nominated by {request.user.username}!"
-            )
  
             return Response(
                 {"message": "Nomination submitted successfully!"},
@@ -323,7 +313,7 @@ class CoordinatorNominationView(APIView):
             # Rejecting works at ANY stage
             nom.status = "REJECTED"
             nom.save()
-            # send_notification(nominee, "Your nomination has been rejected.")
+            send_notification(nominee, "Your nomination has been rejected.")
             return Response({"message": "Nomination rejected"})
 
         elif action == "UNDO":
@@ -356,14 +346,14 @@ class CoordinatorNominationView(APIView):
                 
                 nom.status = "COMMITTEE_APPROVED"
                 nom.save()
-                # send_notification(nominee, "🎉 You have been selected as a finalist!")
+                send_notification(nominee, "🎉 You have been selected as a finalist!")
                 return Response({"message": "Nomination marked as Finalist (Stage 2 Complete)"})
 
             # 🚀 STAGE 3: COMMITTEE_APPROVED -> AWARDED (Admin/Winner)
             elif nom.status == "COMMITTEE_APPROVED":
                 nom.status = "AWARDED"
                 nom.save()
-                # send_notification(nominee, "🎉 Congratulations! You have won the award.")
+                send_notification(nominee, "🎉 Congratulations! You have won the award.")
                 return Response({"message": "Award Granted (Process Complete)"})
 
             else:
