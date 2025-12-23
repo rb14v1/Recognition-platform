@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Typography, Paper, TextField, Button, Grid, CircularProgress, Card, CardContent 
+  Typography, Paper, TextField, Button, Grid, CircularProgress, Card, CardContent,Box 
 } from "@mui/material";
 import { 
   Save, History, EmojiEvents, AccessTime, HowToVote, Update 
@@ -74,7 +74,7 @@ const TimelineManager = () => {
         {/* Content */}
         <CardContent className="p-5">
             <Grid container spacing={2}>
-                <Grid xs={12}>
+                <Box width="100%">
                     <TextField
                         fullWidth
                         type="datetime-local"
@@ -88,7 +88,7 @@ const TimelineManager = () => {
                             "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: '#fff' } 
                         }}
                     />
-                </Grid>
+                </Box>
                 <Grid xs={12}>
                     <TextField
                         fullWidth
