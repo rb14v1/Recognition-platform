@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Typography, Avatar, Button, Chip, CircularProgress } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
 import UndoIcon from "@mui/icons-material/Undo";
-
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import StarIcon from "@mui/icons-material/Star";
-import AssessmentIcon from "@mui/icons-material/Assessment"; // REPORT ICON
-
 import { authAPI } from "../../api/auth";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [nominees, setNominees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -36,7 +36,8 @@ const CommitteeReview = () => {
             // This ensures we get the ones the Coordinator just approved!
             const filter = activeTab === 0 ? "committee_pending" : "history";
 
-            const res = await authAPI.getCoordinatorNominations(filter);
+            // line 39
+            const res = await authAPI.getCoordinatorNominations(filter as any);
             setNominations(res.data);
         } catch (e) {
             console.error(e);
@@ -56,7 +57,7 @@ const CommitteeReview = () => {
             setOpenModal(null);
             loadData();
         } catch (e: any) {
-             if (e.response?.data?.error) {
+            if (e.response?.data?.error) {
                 toast.error(e.response.data.error); // Catch "Limit 15" error
             } else {
                 toast.error("Action failed");

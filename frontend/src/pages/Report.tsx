@@ -105,7 +105,8 @@ const Report: React.FC = () => {
   /* =================== EXPORT =================== */
   const handleExport = async () => {
     try {
-      const res = await authAPI.getAdminReport({
+      // Option 1: Quick fix (Cast to any)
+      const res = await (authAPI.getAdminReport as any)({
         responseType: "blob",
       });
 
@@ -202,7 +203,7 @@ const Report: React.FC = () => {
           <KpiCard label="Committee Finalists" value={summary.committee_finalists} />
           <KpiCard label="Final Winners" value={summary.final_winner} />
           <KpiCard label="Total Rejections" value={summary.total_rejections} />
-          <KpiCard label="Employees Not Nominated" value={summary.employees_not_nominated} />
+          <KpiCard label="Employees Not Nominated" value={summary.Employees_Yet_to_Nominate} />
         </Box>
 
         {/* ================= DEPARTMENT ANALYTICS ================= */}
@@ -230,7 +231,7 @@ const Report: React.FC = () => {
             <HoverCard title="Department Share">
               <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
-                  <Pie data={filteredDeptStats} dataKey="count" nameKey="department" outerRadius={120}>
+                  <Pie data={filteredDeptStats as any[]} dataKey="count" nameKey="department" outerRadius={120}>
                     {filteredDeptStats.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}

@@ -93,7 +93,7 @@ export const authAPI = {
     // TEAM
     // APPROVALS
     getCoordinatorNominations: (
-        filter: "pending" | "history" = "pending"
+        filter: string
     ) => api.get(`/coordinator/nominations/?filter=${filter}`),
 
     reviewNomination: (data: {

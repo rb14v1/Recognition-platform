@@ -3,7 +3,7 @@ import {
   Typography, Paper, TextField, Button, Grid, CircularProgress, Card, CardContent 
 } from "@mui/material";
 import { 
-  DateRange, Save, History, EmojiEvents, AccessTime, HowToVote, Update 
+  Save, History, EmojiEvents, AccessTime, HowToVote, Update 
 } from "@mui/icons-material";
 import { authAPI } from "../../api/auth"; 
 import toast from "react-hot-toast";
@@ -74,7 +74,7 @@ const TimelineManager = () => {
         {/* Content */}
         <CardContent className="p-5">
             <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                     <TextField
                         fullWidth
                         type="datetime-local"
@@ -89,7 +89,7 @@ const TimelineManager = () => {
                         }}
                     />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                     <TextField
                         fullWidth
                         type="datetime-local"

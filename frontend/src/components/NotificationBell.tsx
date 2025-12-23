@@ -9,7 +9,6 @@ import {
 } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import { authAPI } from "../api/auth";
-import { useAuth } from "../context/AuthContext";
 
 const NotificationBell = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
