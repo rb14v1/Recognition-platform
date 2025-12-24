@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Typography, Avatar, Button, Chip, CircularProgress } from "@mui/material";
 import UndoIcon from "@mui/icons-material/Undo";
 import StarIcon from "@mui/icons-material/Star";
