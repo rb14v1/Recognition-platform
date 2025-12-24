@@ -89,7 +89,7 @@ const TimelineManager = () => {
                         }}
                     />
                 </Box>
-                <Grid xs={12}>
+                <Box width="100%">
                     <TextField
                         fullWidth
                         type="datetime-local"
@@ -103,7 +103,7 @@ const TimelineManager = () => {
                             "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: '#fff' } 
                         }}
                     />
-                </Grid>
+                </Box>
             </Grid>
         </CardContent>
     </Card>
