@@ -23,10 +23,10 @@ def send_notification(user, message, title=None, notif_type="INFO"):
     print("📨 Sending email to:", user.email)
 
     # Send email (DO NOT silence errors)
-    # send_mail(
-    #     subject=title,
-    #     message=message,
-    #     from_email=settings.EMAIL_HOST_USER,   # MUST match login
-    #     recipient_list=[user.email],
-    #     fail_silently=False,                   # 🔥 VERY IMPORTANT
-    # )
+    send_mail(
+        subject=title,
+        message=message,
+        from_email=settings.EMAIL_HOST_USER,   # MUST match login
+        recipient_list=[user.email],
+        fail_silently=False,                   # 🔥 VERY IMPORTANT
+    )
