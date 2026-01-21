@@ -12,7 +12,7 @@ from .views import (
     AdminResultsView,
     WinnersView,
     NotificationListView,
-    NotificationMarkReadView,AdminAnalyticsView, AdminReportExportView, NominationOptionsDataView
+    NotificationMarkReadView,AdminAnalyticsView, AdminReportExportView, NominationOptionsDataView, NominationFilterOptionsView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -27,6 +27,7 @@ urlpatterns = [
     path('me/', UserProfileView.as_view(), name='user_profile'),
     
     # Nominations
+    path('nominate/filter-options/', NominationFilterOptionsView.as_view(), name='nominate-filters'),
     path('nominate/list/', NominationOptionsView.as_view(), name='nominate_list'),
     path('nominate/submit/', CreateNominationView.as_view(), name='nominate_submit'),
     path('nominate/status/', NominationStatusView.as_view(), name='nominate_status'),

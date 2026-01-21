@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count # Needed for search logic
 from .models import Vote,Notification
@@ -40,41 +41,59 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         # Returns the current user so they can PATCH their own data
         return self.request.user      
- 
+
+# 1. Define the Pagination Class (Standard Practice)
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 15  # Matches your frontend ITEMS_PER_PAGE
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class NominationFilterOptionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Efficiently fetch only unique combinations of these 3 fields
+        # This is very fast even with thousands of users
+        data = User.objects.exclude(role='ADMIN').values(
+            'employee_dept', 
+            'employee_role', 
+            'location'
+        ).distinct()
+        
+        return Response(list(data))
+     
 class NominationOptionsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserNominationListSerializer
- 
+    pagination_class = StandardResultsSetPagination 
+
     def get_queryset(self):
-        # Start with all users except the one making the request
         user = self.request.user
-        queryset = User.objects.exclude(id=user.id).exclude(role='ADMIN')
- 
-        # 1. Search by Name OR Employee ID (Unified Search)
+        queryset = User.objects.exclude(id=user.id).exclude(role='ADMIN').order_by('username') # 🔥 Always order paginated lists!
+
+        # 1. Unified Search
         search_query = self.request.query_params.get('search', None)
         if search_query:
             queryset = queryset.filter(
                 Q(username__icontains=search_query) |
                 Q(employee_id__icontains=search_query)
             )
- 
-        # 2. Filter by Employee Dept
+
+        # 2. Filters
         dept_filter = self.request.query_params.get('dept', None)
-        if dept_filter:
+        if dept_filter and dept_filter != "All":
             queryset = queryset.filter(employee_dept__iexact=dept_filter)
- 
-        # 3. Filter by Employee Role (Job Title)
+
         role_filter = self.request.query_params.get('role', None)
-        if role_filter:
+        if role_filter and role_filter != "All":
             queryset = queryset.filter(employee_role__iexact=role_filter)
- 
-        # 4. Filter by Location (NEW)
+
         loc_filter = self.request.query_params.get('location', None)
-        if loc_filter:
+        if loc_filter and loc_filter != "All":
             queryset = queryset.filter(location__iexact=loc_filter)
- 
-        return queryset
- 
+
+        return queryset 
      
 def check_timeline_validity(phase):
     return True, "Allowed"
@@ -257,7 +276,7 @@ class CoordinatorNominationView(APIView):
         # 3. HISTORY (Completed items)
         # ------------------------------------------------------
         elif filter_type == "history":
-            nominations = query.filter(status__in=["REJECTED", "COMMITTEE_APPROVED", "AWARDED"])
+            nominations = query.filter(status__in=["APPROVED","REJECTED", "COMMITTEE_APPROVED", "AWARDED"])
             
         # Fallback (Safety)
         else:

@@ -66,14 +66,21 @@ export const authAPI = {
 
     // NOMINATIONS
     getNominationOptions: (filters?: {
+        page?: number;       // 🔥 Added page
         search?: string;
         dept?: string;
         role?: string;
         location?: string;
     }) => {
-        const queryString = buildQueryParams(filters || {});
+        // Automatically builds ?page=1&search=...&dept=...
+        const queryString = buildQueryParams({
+            ...filters,
+            page: filters?.page?.toString() || "1"
+        });
         return api.get(`/nominate/list/?${queryString}`);
     },
+
+    getNominationFilterOptions: () => api.get("/nominate/filter-options/"),
     getNominationCriteria: () => api.get("/nominate/options-data/"),
 
     submitNomination: (data: NominationPayload) =>
@@ -118,7 +125,7 @@ export const authAPI = {
 
     // ✅ REPORT EXPORT (FIXED)
     getAdminReport: () =>
-    api.get("/admin/report/", { responseType: "blob" }),
+        api.get("/admin/report/", { responseType: "blob" }),
 
 
 };
