@@ -14,10 +14,10 @@ import {
     DialogContent,
     Slide,
     ToggleButton,
-    ToggleButtonGroup
+    ToggleButtonGroup,
+    Divider
 } from "@mui/material";
-import { TransitionProps } from '@mui/material/transitions';
-import { CheckCircle, Cancel, History, AccessTime, SmartToy, ViewList, Close as CloseIcon } from "@mui/icons-material";
+import { CheckCircle, Cancel, History, AccessTime, SmartToy, ViewList, Close as CloseIcon, Category } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -29,10 +29,9 @@ import DetailPage from "../pages/DetailPage";
 
 const TEAL = "#00A8A8";
 
+// ✅ FIXED TRANSITION COMPONENT
 const Transition = React.forwardRef(function Transition(
-  props: TransitionProps & {
-    children: React.ReactElement;
-  },
+  props: any, 
   ref: React.Ref<unknown>,
 ) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -56,15 +55,11 @@ const CoordinatorNomination = () => {
         }
     };
 
-    // ✅ FIX 1: Removed 'viewMode' from dependencies.
-    // Now it ONLY fetches when you change tabs (Pending vs History).
-    // Switching List <-> Copilot will rely on local memory (Instant).
     useEffect(() => {
         loadData();
     }, [activeTab]); 
 
-    // --- ⚡ INSTANT UPDATE HANDLER ---
-    // Updates local state immediately so List view is ready instantly.
+    // --- INSTANT UPDATE HANDLER ---
     const handleCopilotActionComplete = (id: number, newStatus: string) => {
         setNominations((prevNominations) => 
             prevNominations.map((nom) => 
@@ -87,11 +82,14 @@ const CoordinatorNomination = () => {
                     status: n.status,
                 };
             }
+            // ✅ UPDATED: Capture Category and Metrics here
             acc[n.nominee_name].list.push({
                 nominator_name: n.nominator_name,
                 reason: n.reason,
                 submitted_at: n.submitted_at,
                 id: n.id,
+                category: n.category,               // <--- ADDED
+                selected_metrics: n.selected_metrics // <--- ADDED
             });
             return acc;
         }, {});
@@ -118,6 +116,7 @@ const CoordinatorNomination = () => {
             
             await authAPI.reviewNomination({ nomination_id: id, action });
             toast.success(action === "APPROVE" ? "Nomination Shortlisted!" : "Nomination Rejected");
+            setOpenModal(null);
         } catch (e) {
             toast.error("Action failed");
             loadData(); // Revert on failure
@@ -143,6 +142,38 @@ const CoordinatorNomination = () => {
         } catch (e) {
             toast.error("Failed to export Excel");
         }
+    };
+
+    // --- Helper to format Metrics ---
+    const renderMetrics = (metrics: any) => {
+        if (!metrics) return "N/A";
+        
+        // If it's a string (JSON string), try to parse it
+        let data = metrics;
+        if (typeof metrics === 'string') {
+            try {
+                data = JSON.parse(metrics);
+            } catch (e) {
+                return metrics; // Return as is if simple string
+            }
+        }
+
+        // If it's an array of objects (common pattern)
+        if (Array.isArray(data)) {
+            return (
+                <ul style={{ margin: "5px 0", paddingLeft: "20px" }}>
+                    {data.map((m: any, idx: number) => (
+                        <li key={idx}>
+                            {/* Adjust based on your actual metric object structure */}
+                            {m.metric || m.category || m.name || JSON.stringify(m)}
+                        </li>
+                    ))}
+                </ul>
+            );
+        }
+
+        // Fallback
+        return JSON.stringify(data);
     };
 
     return (
@@ -285,10 +316,29 @@ const CoordinatorNomination = () => {
                 <DialogContent sx={{ py: 2 }}>
                     {openModal?.list?.map((item: any, i: number) => (
                         <div key={i} style={{ marginBottom: "18px", paddingBottom: "12px", borderBottom: "1px solid #e5e5e5" }}>
+                            
+                            {/* Nominator & Reason */}
                             <Typography sx={{ fontWeight: "bold" }}>Nominated by: <span style={{ fontWeight: 400 }}>{item.nominator_name}</span></Typography>
-                            <Typography sx={{ mb: 1, color: "#333" }}><b>Reason:</b> {item.reason}</Typography>
-                            <Typography variant="caption" sx={{ color: TEAL, fontStyle: "italic" }}>
-                                {new Date(item.submitted_at).toLocaleString()}
+                            <Typography sx={{ mb: 1, color: "#333", mt: 1 }}><b>Reason:</b> {item.reason}</Typography>
+
+                            {/* ✅ NEW: CATEGORY */}
+                            <Typography sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Category fontSize="small" sx={{ color: TEAL }} />
+                                <b>Category:</b> {item.category || "N/A"}
+                            </Typography>
+
+                            {/* ✅ NEW: METRICS */}
+                            <Box sx={{ mt: 1, bgcolor: "#f9fafb", p: 1, borderRadius: 2 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: "bold", color: "#555" }}>
+                                    Key Metrics / Behaviors:
+                                </Typography>
+                                <Typography variant="body2" component="div" sx={{ color: "#333" }}>
+                                    {renderMetrics(item.selected_metrics)}
+                                </Typography>
+                            </Box>
+
+                            <Typography variant="caption" sx={{ color: TEAL, fontStyle: "italic", display: 'block', mt: 1 }}>
+                                Submitted on: {new Date(item.submitted_at).toLocaleString()}
                             </Typography>
                         </div>
                     ))}

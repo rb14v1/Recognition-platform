@@ -257,44 +257,68 @@ class CoordinatorNominationView(APIView):
         
         query = Nomination.objects.select_related("nominee", "nominator").order_by("-submitted_at")
 
-        # 1. COORDINATOR PENDING
-        # 🔥 FIX: Include old 'SUBMITTED' so old records appear
+        # 1. PENDING (Coordinator has not acted yet)
         if filter_type == "coordinator_pending" or filter_type == "pending":
-            nominations = query.filter(status__in=["NOMINATION_SUBMITTED", "SUBMITTED"])
+            nominations = query.filter(status__in=["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"])
 
-        # 2. COMMITTEE PENDING
-        # 🔥 FIX: Include old 'APPROVED'
+        # 2. COMMITTEE PENDING (Coordinator Approved, waiting for Committee)
         elif filter_type == "committee_pending":
             nominations = query.filter(status__in=["COORDINATOR_APPROVED", "APPROVED"])
 
-        # 3. HISTORY
+        # 3. HISTORY (Processed items)
         elif filter_type == "history":
-            nominations = query.exclude(status__in=["NOMINATION_SUBMITTED", "SUBMITTED"])
+            nominations = query.exclude(
+                status__in=["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"]
+            )
             
         else:
             nominations = query.filter(status__in=["NOMINATION_SUBMITTED", "SUBMITTED"])
 
-        data = [
-            {
+        # --- CONSTRUCT RESPONSE DATA ---
+        data = []
+        for n in nominations:
+            # 🟢 LOGIC: Extract Category from selected_metrics JSON
+            derived_category = "N/A"
+            metrics_data = n.selected_metrics
+
+            # Case A: It's already a Python List (Django JSONField default)
+            if isinstance(metrics_data, list) and len(metrics_data) > 0:
+                first_item = metrics_data[0]
+                if isinstance(first_item, dict):
+                    derived_category = first_item.get('category', 'N/A')
+
+            # Case B: It's a String (sometimes happens with SQLite/CSV imports)
+            elif isinstance(metrics_data, str):
+                try:
+                    parsed_data = json.loads(metrics_data)
+                    if isinstance(parsed_data, list) and len(parsed_data) > 0:
+                        derived_category = parsed_data[0].get('category', 'N/A')
+                except:
+                    derived_category = "N/A"
+
+            data.append({
                 "id": n.id,
-                "nominee_name": n.nominee.username,
-                "nominee_role": n.nominee.employee_role or "Employee",
-                "nominee_dept": n.nominee.employee_dept or "General",
-                "nominator_name": n.nominator.username,
+                "nominee_name": f"{n.nominee.first_name} {n.nominee.last_name}".strip() or n.nominee.username,
+                "nominee_role": getattr(n.nominee, 'employee_role', "Employee"),
+                "nominee_dept": getattr(n.nominee, 'employee_dept', "General"),
+                "nominator_name": f"{n.nominator.first_name} {n.nominator.last_name}".strip() or n.nominator.username,
                 "reason": n.reason,
                 "submitted_at": n.submitted_at,
                 "status": n.status,
-            }
-            for n in nominations
-        ]
+                
+                # ✅ SEND DERIVED CATEGORY
+                "category": derived_category,
+                "selected_metrics": n.selected_metrics
+            })
 
         return Response(data)
 
     def post(self, request):
         nom_id = request.data.get("nomination_id")
         action = request.data.get("action") 
+        user = request.user
 
-        if request.user.role != "COORDINATOR" and request.user.role != "ADMIN":
+        if user.role not in ["COORDINATOR", "ADMIN"]:
             return Response({"error": "Unauthorized."}, status=403)
 
         try:
@@ -306,57 +330,56 @@ class CoordinatorNominationView(APIView):
 
         # === REJECT LOGIC ===
         if action == "REJECT":
-            # 🔥 FIX: Check BOTH old and new statuses
-            if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED"]:
-                all_noms_for_person.update(status="COORDINATOR_REJECTED")
-                send_notification(nominee, "Your nomination was not shortlisted by the Coordinator.")
-                return Response({"message": f"Rejected (Coordinator Phase) for {nominee.username}"})
-            
+            if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"]:
+                new_status = "COORDINATOR_REJECTED"
+                msg = "Rejected (Coordinator Phase)"
             elif original_nom.status in ["COORDINATOR_APPROVED", "APPROVED"]:
-                all_noms_for_person.update(status="COMMITTEE_REJECTED")
-                return Response({"message": f"Rejected (Committee Phase) for {nominee.username}"})
-            
+                new_status = "COMMITTEE_REJECTED"
+                msg = "Rejected (Committee Phase)"
             else:
-                 return Response({"error": f"Cannot reject from current state: {original_nom.status}"}, status=400)
+                return Response({"error": f"Cannot reject from current state: {original_nom.status}"}, status=400)
+
+            all_noms_for_person.update(status=new_status)
+            return Response({"message": f"{msg} for {nominee.username}"})
 
         # === APPROVE LOGIC ===
         elif action == "APPROVE":
-            # Stage 1: Submitted -> Coordinator Approved
-            if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED"]:
-                all_noms_for_person.update(status="COORDINATOR_APPROVED")
-                send_notification(nominee, "You have been Shortlisted by the Coordinator!")
-                return Response({"message": f"Shortlisted {nominee.username}"})
+            if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"]:
+                new_status = "COORDINATOR_APPROVED"
+                msg = "Shortlisted by Coordinator"
             
-            # Stage 2: Coordinator Approved -> Committee Approved (Finalist)
             elif original_nom.status in ["COORDINATOR_APPROVED", "APPROVED"]:
                 finalist_count = Nomination.objects.filter(status="COMMITTEE_APPROVED").values('nominee').distinct().count()
                 if finalist_count >= 15:
                     return Response({"error": "Finalist limit (15) reached."}, status=400)
                 
-                all_noms_for_person.update(status="COMMITTEE_APPROVED")
-                send_notification(nominee, "You are now a Finalist!")
-                return Response({"message": f"{nominee.username} is now a Finalist"})
+                new_status = "COMMITTEE_APPROVED"
+                msg = "Approved by Committee (Finalist)"
             
-            # Stage 3: Committee Approved -> Awarded
             elif original_nom.status == "COMMITTEE_APPROVED":
-                all_noms_for_person.update(status="AWARDED")
-                send_notification(nominee, "Congratulations! You have won the award.")
-                return Response({"message": f"Award Granted to {nominee.username}"})
+                new_status = "AWARDED"
+                msg = "Award Granted"
+            else:
+                return Response({"error": f"Cannot approve from current state: {original_nom.status}"}, status=400)
+
+            all_noms_for_person.update(status=new_status)
+            return Response({"message": f"{msg} for {nominee.username}"})
 
         # === UNDO LOGIC ===
         elif action == "UNDO":
-            # Map backward transitions
-            if original_nom.status == "AWARDED":
-                new_status = "COMMITTEE_APPROVED"
-            elif original_nom.status == "COMMITTEE_APPROVED":
-                new_status = "COORDINATOR_APPROVED"
-            elif original_nom.status in ["COORDINATOR_APPROVED", "APPROVED"]:
-                new_status = "NOMINATION_SUBMITTED"
-            elif original_nom.status in ["COORDINATOR_REJECTED", "REJECTED"]:
-                new_status = "NOMINATION_SUBMITTED"
-            elif original_nom.status == "COMMITTEE_REJECTED":
-                new_status = "COORDINATOR_APPROVED"
-            else:
+            # Simple reversion map
+            reversion_map = {
+                "AWARDED": "COMMITTEE_APPROVED",
+                "COMMITTEE_APPROVED": "COORDINATOR_APPROVED",
+                "COORDINATOR_APPROVED": "NOMINATION_SUBMITTED",
+                "APPROVED": "NOMINATION_SUBMITTED",
+                "COORDINATOR_REJECTED": "NOMINATION_SUBMITTED",
+                "REJECTED": "NOMINATION_SUBMITTED",
+                "COMMITTEE_REJECTED": "COORDINATOR_APPROVED"
+            }
+            
+            new_status = reversion_map.get(original_nom.status)
+            if not new_status:
                 return Response({"error": "Cannot undo from this stage"}, status=400)
             
             all_noms_for_person.update(status=new_status)

@@ -80,9 +80,18 @@ class NominationSerializer(serializers.ModelSerializer):
  
     class Meta:
         model = Nomination
-        # Exclude 'nominator' from fields because we pass it in views.py
-        fields = ['nominee', 'reason', 'nominator_name', 'nominee_name', 'selected_metrics']
- 
+        fields = [
+            'id',
+            'nominator_name',
+            'nominee_name',
+            'nominee_role',
+            'nominee_dept',
+            'reason',
+            'submitted_at',
+            'status',
+            'category',
+            'selected_metrics'
+        ]
     def validate_selected_metrics(self, value):
         """
         Enforce:
