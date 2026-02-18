@@ -78,8 +78,8 @@ const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDia
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <InfoItem icon={<Badge />} label="Employee ID" value={user.employee_id} />
-            <InfoItem icon={<Work />} label="Job Title" value={user.employee_role} />
-            <InfoItem icon={<Business />} label="Department" value={user.employee_dept} />
+            <InfoItem icon={<Work />} label="Portfolio" value={user.employee_role} />
+            <InfoItem icon={<Business />} label="Practise" value={user.employee_dept} />
             
             {/* 🔥 LOCATION SECTION (UPDATED) */}
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 relative group">

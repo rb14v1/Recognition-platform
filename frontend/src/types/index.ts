@@ -18,6 +18,6 @@ export interface User {
     location?: string;
     employee_id: string;
     employee_dept?: string; // Optional until backend confirms
-    employee_role?: string; // The job title (e.g. "Developer")
+    employee_role?: string; // The Portfolio (e.g. "Developer")
     manager_name?: string;  // Placeholder for future backend update
 }

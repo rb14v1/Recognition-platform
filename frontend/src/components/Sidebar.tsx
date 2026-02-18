@@ -7,8 +7,10 @@ import {
   Assessment,
   MenuOpen,
   Menu,
+  CloudUpload,
 } from "@mui/icons-material";
 import { Tooltip, IconButton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 interface SidebarProps {
   activeSection: string;
@@ -25,7 +27,8 @@ const Sidebar = ({
   toggleSidebar,
   userRole,
 }: SidebarProps) => {
-  
+  const navigate = useNavigate();
+
   // Base menu
   let menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
@@ -36,23 +39,29 @@ const Sidebar = ({
     menuItems.push(
       { 
         id: "coordinator", 
-        label: "Co-ordinator", 
+        label: "Star-Award", 
         icon: <SupervisorAccount /> 
       },
       { 
         id: "committee", 
-        label: "Committee", 
+        label: "All-Star-Award", 
         icon: <Groups /> 
       },
       { 
         id: "operations", 
-        label: "Finals",   // ✅ Simple & Apt
+        label: "Global-Award",   
         icon: <Gavel />    
       },
       { 
         id: "winners", 
         label: "Winners", 
         icon: <EmojiEvents /> 
+      },
+      // 👇 The Upload Item
+      {
+        id: "upload",
+        label: "Upload Data",
+        icon: <CloudUpload />,
       },
       { 
         id: "reports", 
@@ -62,9 +71,31 @@ const Sidebar = ({
     );
   }
 
+  // ⚡ Handle Clicks
+  const handleItemClick = (itemId: string) => {
+    // 1. Update the state in ManagementDashboard
+    setActiveSection(itemId);
+
+    // 2. Navigation Logic
+    // ⚠️ IMPORTANT: We DO NOT navigate for "upload", "winners", "reports" etc.
+    // because they are now rendered INSIDE ManagementDashboard.
+    // We only navigate if we need to leave the dashboard entirely.
+    
+    switch (itemId) {
+      // Example: If you have a separate Logout button or external link
+      // case "logout":
+      //   navigate("/login");
+      //   break;
+      
+      default:
+        // Stay on the current page and let ManagementDashboard handle the view
+        break;
+    }
+  };
+
   return (
     <aside
-      className={`bg-white border-r border-gray-200 fixed h-full z-20 pt-5 transition-all duration-300 ease-in-out
+      className={`bg-white border-r border-gray-200 fixed h-full z-20 pt-5 transition-all duration-300 ease-in-out shadow-sm
         ${isOpen ? "w-64" : "w-20"}
       `}
     >
@@ -80,23 +111,23 @@ const Sidebar = ({
         {menuItems.map((item) => (
           <div
             key={item.id}
-            onClick={() => setActiveSection(item.id)}
+            onClick={() => handleItemClick(item.id)}
             className={`flex items-center gap-4 px-3 py-3 rounded-xl cursor-pointer transition-colors
               ${
                 activeSection === item.id
-                  ? "bg-teal-50 text-teal-700 font-semibold"
+                  ? "bg-teal-50 text-teal-700 font-bold border border-teal-100" // Teal Active State
                   : "text-gray-500 hover:bg-gray-100"
               }
             `}
           >
             <Tooltip title={!isOpen ? item.label : ""} placement="right">
-              <div className="flex items-center justify-center">
+              <div className={`flex items-center justify-center ${activeSection === item.id ? "text-teal-600" : ""}`}>
                 {item.icon}
               </div>
             </Tooltip>
 
             <span
-              className={`text-sm font-medium whitespace-nowrap ${
+              className={`text-sm font-medium whitespace-nowrap transition-opacity duration-200 ${
                 isOpen ? "block opacity-100" : "hidden opacity-0"
               }`}
             >

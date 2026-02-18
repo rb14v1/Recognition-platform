@@ -168,18 +168,10 @@ const EmployeeDashboard = () => {
           </CardContent>
         </Card>
  
-      </div> {/* END GRID */}
- 
-      {/* FOOTER */}
-      <div className="mt-12 flex items-center gap-2 text-xs text-gray-400">
-        <VerifiedIcon fontSize="small" />
-        <span>Authenticated as {user?.role || "User"}</span>
-      </div>
- 
+      </div> 
     </div>
   );
 };
  
 export default EmployeeDashboard;
- 
  

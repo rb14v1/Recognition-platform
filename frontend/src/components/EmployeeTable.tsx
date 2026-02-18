@@ -34,8 +34,8 @@ const EmployeeTable = ({
         <div className="w-1/4 pl-2">Employee Details</div>
         <div className="flex-1 flex items-center gap-4">
           <div className="w-20">ID</div>
-          <div className="flex-1">Job Title</div>
-          <div className="w-32">Department</div>
+          <div className="flex-1">Portfolio</div>
+          <div className="w-32">Practise</div>
         </div>
         <div className="w-[120px] text-right pr-2">Action</div>
       </div>

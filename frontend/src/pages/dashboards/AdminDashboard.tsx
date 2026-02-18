@@ -3,10 +3,7 @@ import { Typography, Avatar, Button, Chip, CircularProgress } from "@mui/materia
 import { useAuth } from "../../context/AuthContext";
 import UndoIcon from "@mui/icons-material/Undo";
 
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import StarIcon from "@mui/icons-material/Star";
-import AssessmentIcon from "@mui/icons-material/Assessment"; // REPORT ICON
 
 import { authAPI } from "../../api/auth";
 import toast from "react-hot-toast";
@@ -125,8 +122,8 @@ const AdminDashboard = () => {
         font-bold text-gray-500 text-xs uppercase tracking-wider"
       >
         <div className="col-span-4 text-left">Nominee Details</div>
-        <div className="col-span-2 flex justify-center">Job Title</div>
-        <div className="col-span-2 flex justify-center">Department</div>
+        <div className="col-span-2 flex justify-center">Portfolio</div>
+        <div className="col-span-2 flex justify-center">Practise</div>
         <div className="col-span-2 flex justify-center">Vote Count</div>
         <div className="col-span-2 flex justify-center">Action</div>
       </div>
@@ -177,7 +174,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* JOB TITLE */}
+              {/* Portfolio */}
               <div className="col-span-2 flex justify-center">
                 <Typography className="text-gray-700 font-medium">
                   {nom.employee_role}

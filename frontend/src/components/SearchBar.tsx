@@ -100,7 +100,7 @@ const SearchBar = ({
         {/* Kept pt-2 to prevent label clipping */}
         <div className="flex gap-3 w-full lg:w-auto overflow-x-auto pb-2 pt-2 lg:pt-0 lg:overflow-visible scrollbar-hide px-1">
           <FilterDropdown 
-            label="Department" 
+            label="Practise" 
             value={filters.dept} 
             options={options.departments} 
             onChange={(val: string) => onFilterChange("dept", val)} 

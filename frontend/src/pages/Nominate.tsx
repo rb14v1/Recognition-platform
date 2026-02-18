@@ -257,15 +257,21 @@ const Nominate = () => {
     }
   };
 
-  // EMPLOYEE ROW COMPONENT
+  // =========================================================
+  // UPDATED EMPLOYEE ROW (With strict alignment)
+  // =========================================================
   const EmployeeRow = ({ emp, type }: { emp: any; type: "nominate" | "manage" }) => (
-    <div className="group flex flex-col md:flex-row items-center p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-all duration-200">
-      <div className="flex items-center gap-4 w-full md:w-1/4 mb-2 md:mb-0">
-        <Avatar sx={{ width: 48, height: 48, bgcolor: "#00A8A8", color: "white" }}>
+    <div 
+      className="group flex flex-col md:flex-row items-center px-4 py-3 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-all duration-200"
+      style={{ display: 'flex', width: '100%' }}
+    >
+      {/* 1. EMPLOYEE DETAILS (25%) */}
+      <div className="flex items-center gap-3 mb-2 md:mb-0" style={{ width: '25%' }}>
+        <Avatar sx={{ width: 40, height: 40, bgcolor: "#00A8A8", color: "white" }}>
           {(emp.username || emp.nominee_name)?.charAt(0).toUpperCase()}
         </Avatar>
-        <div>
-          <Typography fontWeight="bold">
+        <div className="min-w-0">
+          <Typography fontWeight="bold" className="text-gray-900 text-sm leading-tight capitalize truncate">
             {emp.username || emp.nominee_name}
           </Typography>
           <Typography variant="caption" className="md:hidden text-gray-400 font-mono">
@@ -274,66 +280,72 @@ const Nominate = () => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between w-full md:flex-1 gap-4">
-        <div className="w-20 text-sm text-gray-500 font-mono hidden md:block">
-          {emp.employee_id}
-        </div>
+      {/* 2. ID (10%) */}
+      <div className="text-sm text-gray-500 font-mono hidden md:block" style={{ width: '10%' }}>
+        {emp.employee_id || "-"}
+      </div>
 
-        <div className="flex-1 text-sm font-medium text-gray-700">
-          {emp.employee_role || <span className="text-gray-400 italic">No Title</span>}
-        </div>
+      {/* 3. PORTFOLIO (30%) - Pushed Right */}
+      <div 
+        className="text-sm font-medium text-gray-700 italic hidden md:block"
+        style={{ width: '30%', paddingLeft: '4rem' }} // Matches logic from previous table
+      >
+        {emp.employee_role || <span className="text-gray-400">No Title</span>}
+      </div>
 
-        <div className="w-32">
-          <Chip
-            label={emp.employee_dept || "General"}
+      {/* 4. PRACTICE (25%) - Aligned Left naturally */}
+      <div className="w-full md:w-auto" style={{ width: '25%' }}>
+        <Chip
+          label={emp.employee_dept || "General"}
+          size="small"
+          sx={{
+            bgcolor: "#f3f4f6",
+            color: "#4b5563",
+            fontWeight: 600,
+            borderRadius: "6px"
+          }}
+        />
+      </div>
+
+      {/* 5. ACTION (10%) */}
+      <div className="flex justify-end gap-2 mt-2 md:mt-0" style={{ width: '10%' }}>
+        {type === "nominate" ? (
+          <Button
+            variant="outlined"
+            onClick={() => handleSelectClick(emp)}
+            startIcon={<EmojiEvents />}
             size="small"
             sx={{
-              bgcolor: "#f3f4f6",
-              color: "#4b5563",
-              fontWeight: 600,
-              borderRadius: "6px"
+              borderColor: "#00A8A8",
+              color: "#00A8A8",
+              fontWeight: "bold",
+              borderRadius: "8px",
+              minWidth: "100px"
             }}
-          />
-        </div>
+          >
+            Nominate
+          </Button>
+        ) : (
+          <>
+            <Tooltip title="Edit Nomination">
+              <IconButton
+                onClick={() => handleEditClick(emp)}
+                className="text-gray-400 hover:text-teal-600 hover:bg-teal-50"
+              >
+                <Edit fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <div className="pl-4 w-[120px] flex justify-end gap-2">
-          {type === "nominate" ? (
-            <Button
-              variant="outlined"
-              onClick={() => handleSelectClick(emp)}
-              startIcon={<EmojiEvents />}
-              size="small"
-              sx={{
-                borderColor: "#00A8A8",
-                color: "#00A8A8",
-                fontWeight: "bold",
-                borderRadius: "8px"
-              }}
-            >
-              Nominate
-            </Button>
-          ) : (
-            <>
-              <Tooltip title="Edit Nomination">
-                <IconButton
-                  onClick={() => handleEditClick(emp)}
-                  className="text-gray-400 hover:text-teal-600 hover:bg-teal-50"
-                >
-                  <Edit fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Remove Nomination">
-                <IconButton
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                >
-                  <Delete fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-        </div>
+            <Tooltip title="Remove Nomination">
+              <IconButton
+                onClick={() => setDeleteDialogOpen(true)}
+                className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
       </div>
     </div>
   );
@@ -372,9 +384,8 @@ const Nominate = () => {
           filters={filters}
           onFilterChange={(k, v) => {
             setFilters(prev => ({ ...prev, [k]: v }));
-            setPage(1); // Reset to page 1 on filter change
+            setPage(1); 
           }}
-          // 🔥 DYNAMIC OPTIONS (Should populate if backend works)
           options={{ departments, roles: rolesForDept, locations }}
         />
       )}
@@ -390,18 +401,24 @@ const Nominate = () => {
         ) : (
           <div className="flex flex-col gap-3">
 
-            {/* HEADER */}
-            <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider">
-              <div className="w-1/4 pl-2">Employee Details</div>
-              <div className="flex-1 flex items-center gap-4">
-                <div className="w-20">ID</div>
-                <div className="flex-1">Job Title</div>
-                <div className="w-32">Department</div>
-              </div>
-              <div className="w-[120px] text-right pr-2">Action</div>
+            {/* HEADER - UPDATED ALIGNMENT */}
+            <div 
+              className="hidden md:flex items-center px-4 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider"
+              style={{ display: 'flex', width: '100%' }}
+            >
+              <div style={{ width: '25%', paddingLeft: '8px' }}>Employee Details</div>
+              <div style={{ width: '10%' }}>ID</div>
+              
+              {/* PORTFOLIO (Renamed from Job Title) - Pushed Right */}
+              <div style={{ width: '30%', paddingLeft: '4rem' }}>Portfolio</div>
+              
+              {/* PRACTICE (Renamed from Department) - Aligned Left */}
+              <div style={{ width: '25%' }}>Practice</div>
+              
+              <div style={{ width: '10%', textAlign: 'right', paddingRight: '8px' }}>Action</div>
             </div>
 
-            {/* Dynamic List from Server */}
+            {/* Dynamic List */}
             {employees.map(emp => (
               <EmployeeRow key={emp.id} emp={emp} type="nominate" />
             ))}
@@ -422,7 +439,7 @@ const Nominate = () => {
         )}
       </div>
 
-      {/* NOMINATION MODAL */}
+      {/* NOMINATION MODAL (Unchanged Logic) */}
       <Dialog
         open={nominateDialogOpen}
         onClose={() => setNominateDialogOpen(false)}
@@ -438,8 +455,6 @@ const Nominate = () => {
         </DialogTitle>
 
         <DialogContent>
-
-          {/* EMPLOYEE INFO */}
           <div className="bg-gray-50 p-3 rounded-lg mb-4 flex items-center gap-3">
             <Avatar sx={{ width: 32, height: 32, bgcolor: "#00A8A8" }}>
               {selectedEmp?.username?.charAt(0)}
@@ -450,10 +465,7 @@ const Nominate = () => {
             </div>
           </div>
 
-          {/* CATEGORY + METRICS SIDE BY SIDE */}
           <div className="flex gap-4 w-full mb-2">
-
-            {/* CATEGORY WITH DELETE BUTTON */}
             {selectedCategory ? (
               <Chip
                 label={selectedCategory}
@@ -489,7 +501,6 @@ const Nominate = () => {
               </FormControl>
             )}
 
-            {/* METRICS */}
             <FormControl fullWidth disabled={!selectedCategory}>
               <InputLabel>Select Metrics</InputLabel>
               <Select

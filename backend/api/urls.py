@@ -11,7 +11,7 @@ from .views import (
     VotingView,
     AdminResultsView,
     WinnersView,
-    NotificationListView,
+    NotificationListView,UserManagementView,NominationAIAnalysisView,StarAwardExportView,
     NotificationMarkReadView,AdminAnalyticsView, AdminReportExportView, NominationOptionsDataView, NominationFilterOptionsView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -42,7 +42,7 @@ urlpatterns = [
     path('voting/finalists/', VotingView.as_view(), name='voting_list'),
     path('admin/results/', AdminResultsView.as_view(), name='admin_results'),
     path('admin/winners/', WinnersView.as_view(), name='all_winners'),
-    
+    path('admin/manage-users/', UserManagementView.as_view(), name='manage_users'),
     # Notifications ✅ FIXED
     path('notifications/', NotificationListView.as_view()),
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view()),
@@ -50,6 +50,8 @@ urlpatterns = [
     # Analytics
     path("admin/analytics/", AdminAnalyticsView.as_view()),
     path("admin/report/", AdminReportExportView.as_view()),
+    path('nominations/ai-analysis/', NominationAIAnalysisView.as_view(), name='ai-analysis'),
+    path('nomination/export-star-awards/', StarAwardExportView.as_view(), name='export-star-awards'),
 
  
 ]

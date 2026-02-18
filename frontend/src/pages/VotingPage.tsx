@@ -25,10 +25,6 @@ const VotingPage = () => {
             console.log("FINALISTS:", res.data.finalists); // 🔥 SEND ME THIS
  
             const list = Array.isArray(res.data.finalists) ? res.data.finalists : [];
- 
-            // ============================================
-            // 🔥 YOU MUST PICK THE CORRECT DEDUPE KEY BELOW
-            // ============================================
            
             const uniqueMap: any = {};
  

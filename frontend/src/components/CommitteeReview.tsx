@@ -14,7 +14,7 @@ import {
     DialogContent,
 } from "@mui/material";
 
-import { EmojiEvents, Cancel } from "@mui/icons-material";
+import { EmojiEvents, Cancel, History, AccessTime } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import CloseIcon from "@mui/icons-material/Close";
@@ -32,10 +32,8 @@ const CommitteeReview = () => {
 
     const loadData = async () => {
         try {
-            // 🔥 UPDATED: Request specific "committee_pending" list
-            // This ensures we get the ones the Coordinator just approved!
+            // Requests committee-specific pending or overall decision history
             const filter = activeTab === 0 ? "committee_pending" : "history";
-
             const res = await authAPI.getCoordinatorNominations(filter);
             setNominations(res.data);
         } catch (e) {
@@ -46,25 +44,19 @@ const CommitteeReview = () => {
     const handleDecision = async (id: number, action: "APPROVE" | "REJECT") => {
         try {
             await authAPI.reviewNomination({ nomination_id: id, action });
-
-            toast.success(
-                action === "APPROVE"
-                    ? "Promoted to Finalist!"
-                    : "Nomination Rejected"
-            );
-
+            toast.success(action === "APPROVE" ? "Promoted to Finalist!" : "Nomination Rejected");
             setOpenModal(null);
             loadData();
         } catch (e: any) {
              if (e.response?.data?.error) {
-                toast.error(e.response.data.error); // Catch "Limit 15" error
+                toast.error(e.response.data.error); 
             } else {
                 toast.error("Action failed");
             }
         }
     };
 
-    // GROUP NOMINATIONS BY NOMINEE
+    // Grouping logic remains consistent with the Coordinator view
     const grouped = nominations.reduce((acc: any, n: any) => {
         if (!acc[n.nominee_name]) {
             acc[n.nominee_name] = {
@@ -111,30 +103,31 @@ const CommitteeReview = () => {
                         "& .Mui-selected": { color: TEAL + " !important" },
                     }}
                 >
-                    <Tab label="Review Pool" />
-                    <Tab label="Decision History" />
+                    <Tab icon={<AccessTime />} iconPosition="start" label="Review Pool" />
+                    <Tab icon={<History />} iconPosition="start" label="Decision History" />
                 </Tabs>
             </Box>
 
-            {/* CARDS LIST */}
-            <div className="flex flex-col gap-2">
+            {/* CARDS LIST - Updated to match Coordinator layout */}
+            <div className="flex flex-col gap-3">
                 {groupedList.map((grp: any, index: number) => (
                     <Card
                         key={index}
                         sx={{
                             borderRadius: 3,
                             borderLeft: `6px solid ${TEAL}`,
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
                         }}
                     >
-                        <CardContent className="flex flex-col space-y-0 p-3">
-                            {/* TOP ROW */}
-                            <div className="flex justify-between items-center">
-                                {/* LEFT SIDE */}
-                                <div className="flex items-center gap-3 ">
+                        <CardContent className="p-4">
+                            <div className="flex items-center w-full">
+                               
+                                {/* Section 1: Profile Info */}
+                                <div className="flex items-center gap-3 w-1/3">
                                     <Avatar
                                         sx={{
-                                            width: 56,
-                                            height: 56,
+                                            width: 50,
+                                            height: 50,
                                             bgcolor: TEAL,
                                             color: "white",
                                             fontWeight: "bold",
@@ -143,132 +136,101 @@ const CommitteeReview = () => {
                                     >
                                         {grp.nominee_name?.[0]?.toUpperCase()}
                                     </Avatar>
-
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-3">
-                                            <Typography variant="h6" fontWeight="bold">
-                                                {grp.nominee_full_name || grp.nominee_name}
-                                            </Typography>
-
+                                        <Typography variant="subtitle1" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
+                                            {grp.nominee_full_name}
+                                        </Typography>
+                                        <div className="mt-1">
                                             <Chip
                                                 label={grp.nominee_role}
                                                 size="small"
-                                                sx={{
-                                                    bgcolor: "#e5e7eb",
-                                                    fontWeight: "bold",
-                                                    height: 26,
-                                                }}
+                                                sx={{ bgcolor: "#e5e7eb", fontWeight: "bold", height: 22, fontSize: "0.75rem" }}
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* ACTION BUTTONS (Only in pending tab) */}
-                                {activeTab === 0 && (
-                                    <div className="flex flex-col gap-2 min-w-[160px]">
-                                        <Button
-                                            variant="contained"
-                                            sx={{
-                                                bgcolor: "green",
-                                                color: "white",
-                                                fontWeight: "bold",
-                                                borderRadius: 2,
-                                                "&:hover": { bgcolor: "#0b6e0b" },
-                                            }}
-                                            startIcon={<EmojiEvents />}
-                                            onClick={() => handleDecision(grp.id, "APPROVE")}
-                                        >
-                                            Select Finalist
+                               {/* Details Button */}
+                                <div className="flex flex-1 flex-row justify-center items-center gap-4 border-l border-r border-gray-100 px-4">
+                                    <Typography variant="body2" sx={{ color: "#4b5563", fontWeight: 500 }}>
+                                        {grp.list.length} nomination(s) received
+                                        </Typography>
+                                        <Button size="small" variant="contained" onClick={() => setOpenModal(grp)} sx={{ textTransform: "none", bgcolor: "#f3f4f6", color: "#374151", fontWeight: "bold", borderRadius: 4 }}>
+                                            View details
                                         </Button>
+                                </div>
 
-                                        <Button
+                                {/* Section 3: Committee Actions or Status */}
+                                <div className="flex flex-col justify-center items-end gap-2 w-1/3 pl-4">
+                                    {activeTab === 0 ? (
+                                        <>
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: "green",
+                                                    fontWeight: "bold",
+                                                    borderRadius: 2,
+                                                    px: 2,
+                                                    width: "150px",
+                                                    textTransform: "none",
+                                                    "&:hover": { bgcolor: "#0b6e0b" },
+                                                }}
+                                                startIcon={<EmojiEvents />}
+                                                onClick={() => handleDecision(grp.id, "APPROVE")}
+                                            >
+                                                Select Finalist
+                                            </Button>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                color="error"
+                                                startIcon={<Cancel />}
+                                                sx={{ borderRadius: 2, px: 2, width: "150px", textTransform: "none", fontWeight: "bold" }}
+                                                onClick={() => handleDecision(grp.id, "REJECT")}
+                                            >
+                                                Reject
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Chip
+                                            label={grp.status === "COMMITTEE_APPROVED" ? "Finalist" : grp.status}
+                                            color={grp.status === "REJECTED" ? "error" : "success"}
                                             variant="outlined"
-                                            color="error"
-                                            startIcon={<Cancel />}
-                                            sx={{ borderRadius: 2 }}
-                                            onClick={() => handleDecision(grp.id, "REJECT")}
-                                        >
-                                            Reject
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* NOMINATION COUNT */}
-                            <div className="flex items-center gap-2 text-black font-medium mt-1">
-                                <Typography sx={{ fontWeight: 400 }}>
-                                    {grp.list.length} nomination(s) received
-                                </Typography>
-
-                                <Chip
-                                    label="View details"
-                                    onClick={() => setOpenModal(grp)}
-                                    sx={{
-                                        cursor: "pointer",
-                                        bgcolor: "#e5e7eb",
-                                        "&:hover": { bgcolor: "#d4d4d4" },
-                                        fontWeight: "bold",
-                                    }}
-                                />
+                                            sx={{ fontWeight: "bold" }}
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            {/* EMPTY STATE */}
             {groupedList.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
-                    <Typography>No nominations found.</Typography>
+                    <Typography>No records found in {activeTab === 0 ? "Review Pool" : "Decision History"}.</Typography>
                 </div>
             )}
 
-            {/* MODAL */}
+            {/* View Details Modal */}
             <Dialog
                 open={!!openModal}
                 onClose={() => setOpenModal(null)}
                 fullWidth
                 maxWidth="sm"
-                PaperProps={{ sx: { borderRadius: 3, overflow: "hidden" } }}
+                PaperProps={{ sx: { borderRadius: 3 } }}
             >
-                <DialogTitle
-                    sx={{
-                        fontSize: "1.5rem",
-                        fontWeight: 700,
-                        color: "#008080",
-                        borderBottom: "2px solid #008080",
-                        pb: 2,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                    }}
-                >
+                <DialogTitle sx={{ color: "#008080", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
                     Nominations for {openModal?.nominee_name}
-                    <CloseIcon
-                        onClick={() => setOpenModal(null)}
-                        sx={{ cursor: "pointer", fontSize: "1.7rem", color: "#444", "&:hover": { color: "#000" } }}
-                    />
+                    <CloseIcon onClick={() => setOpenModal(null)} sx={{ cursor: "pointer" }} />
                 </DialogTitle>
-
                 <DialogContent sx={{ pb: 1 }}>
                     {openModal?.list?.map((item: any, i: number) => (
-                        <div
-                            key={i}
-                            style={{
-                                marginBottom: "18px",
-                                paddingBottom: "12px",
-                                borderBottom: i !== openModal.list.length - 1 ? "1px solid #e5e5e5" : "none",
-                            }}
-                        >
-                            <Typography sx={{ fontWeight: "bold", color: "#000" }}>
-                                Nominated by: <span style={{ fontWeight: 400 }}>{item.nominator_name}</span>
-                            </Typography>
-                            <Typography sx={{ color: "#333", mb: 1, wordBreak: "break-word" }}>
-                                <b>Reason:</b> {item.reason}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: "#008080", fontStyle: "italic" }}>
-                                {new Date(item.submitted_at).toLocaleString()}
-                            </Typography>
+                        <div key={i} style={{ marginBottom: "18px", borderBottom: i !== openModal.list.length - 1 ? "1px solid #e5e5e5" : "none", paddingBottom: "12px" }}>
+                            <Typography sx={{ fontWeight: "bold" }}>Nominated by: {item.nominator_name}</Typography>
+                            <Typography sx={{ mb: 1 }}><b>Reason:</b> {item.reason}</Typography>
+                            <Typography variant="caption" sx={{ color: "#008080" }}>{new Date(item.submitted_at).toLocaleString()}</Typography>
                         </div>
                     ))}
                 </DialogContent>

@@ -4,14 +4,12 @@ import { AuthProvider } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
-
 import Nominate from "./pages/Nominate";
 import VotingPage from "./pages/VotingPage";
-
-// ⭐ Ensure file path is correct
+import UploadDataPage from "./pages/UploadDataPage";
+import DetailPage from "./pages/DetailPage";
 import WinnersPage from "./pages/WinnersPage";
 
 // Dashboards
@@ -19,8 +17,6 @@ import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
 import ManagementDashboard from "./pages/dashboards/ManagementDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import Report from "./pages/Report";
-
-
 
 function App() {
   return (
@@ -54,11 +50,13 @@ function App() {
               <Route path="/dashboard/admin" element={<AdminDashboard />} />
               {/* ANALYTICS DASHBOARD (Admin / Committee / Coordinator) */}
               <Route path="/dashboard/report" element={<Report />} />
+              <Route path="/dashboard/upload" element={<UploadDataPage />} />
 
 
               {/* UTILITIES */}
               <Route path="/dashboard/nominate" element={<Nominate />} />
               <Route path="/dashboard/voting" element={<VotingPage />} />
+              <Route path="/dashboard/detailpage" element={<DetailPage />} />
 
             </Route>
           </Route>
