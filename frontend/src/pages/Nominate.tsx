@@ -77,9 +77,7 @@ const Nominate = () => {
   const categories = useMemo(() => Object.keys(metricsByCategory), [metricsByCategory]);
   const [isMetricOpen, setIsMetricOpen] = useState(false);
 
-  // =========================================================
   // DYNAMIC DROPDOWNS (Using filterMetaData)
-  // =========================================================
 
   // 1. Departments
   const departments = useMemo(() => {
@@ -124,7 +122,7 @@ const Nominate = () => {
     loadPageData();
   }, [page, debouncedSearch, filters]);
 
-  // 🔥 INITIAL FETCH FOR FILTER OPTIONS
+  // INITIAL FETCH FOR FILTER OPTIONS
   useEffect(() => {
     const fetchFilters = async () => {
       try {
@@ -257,9 +255,8 @@ const Nominate = () => {
     }
   };
 
-  // =========================================================
   // UPDATED EMPLOYEE ROW (With strict alignment)
-  // =========================================================
+  
   const EmployeeRow = ({ emp, type }: { emp: any; type: "nominate" | "manage" }) => (
     <div 
       className="group flex flex-col md:flex-row items-center px-4 py-3 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-all duration-200"

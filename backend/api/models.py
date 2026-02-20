@@ -16,7 +16,7 @@ class User(AbstractUser):
     # Constants
     EMPLOYEE = 'EMPLOYEE'
     COORDINATOR = 'COORDINATOR'
-    ADMIN = 'ADMIN' # Added for clarity if needed
+    ADMIN = 'ADMIN' 
 
     ROLE_CHOICES = [
         (EMPLOYEE, 'Employee'),
@@ -40,19 +40,11 @@ class User(AbstractUser):
     location = models.CharField(max_length=100, null=True, blank=True)
     country = models.CharField(max_length=100, null=True, blank=True)
     line_manager_name = models.CharField(max_length=150, null=True, blank=True)
-
-    # =========================================================
-    # ✅ MAPPED FIELDS (DATABASE COLUMNS)
     # We use these existing columns to store Practice & Portfolio
-    # =========================================================
     employee_dept = models.CharField(max_length=100, null=True, blank=True, help_text="Stores 'Practice'")
     employee_role = models.CharField(max_length=100, null=True, blank=True, help_text="Stores 'Portfolio'")
 
-    # =========================================================
-    # ✅ PYTHON MAPPINGS (Properties)
-    # This allows you to use user.practice in code, 
-    # but it saves to user.employee_dept in DB.
-    # =========================================================
+    # PYTHON MAPPINGS (Properties)
     @property
     def practice(self):
         return self.employee_dept
@@ -75,9 +67,7 @@ class User(AbstractUser):
     def get_role_level(self):
         return self.ROLE_HIERARCHY.get(self.role, 1)
 
-# =========================================================
-# NOMINATION CRITERIA & MODELS (Unchanged)
-# =========================================================
+# NOMINATION CRITERIA & MODELS 
 
 NOMINATION_CRITERIA = {
     "Collaboration & Engagement": [

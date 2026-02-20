@@ -31,7 +31,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // ⭐ CUSTOM CONFIRM POPUP
+  //  CUSTOM CONFIRM POPUP
   const askConfirmWinner = (id: number, name: string) => {
     toast.custom(
       (t) => (
@@ -51,7 +51,7 @@ const AdminDashboard = () => {
             variant="body2"
             className="mb-5 text-gray-600 text-center"
           >
-            Are you sure you want to declare <b>{name}</b> as the final winner?
+            Are you sure you want to declare <b>{name}</b> as a final winner?
           </Typography>
 
           <div className="flex gap-3">
@@ -92,8 +92,6 @@ const AdminDashboard = () => {
     return "border-l-4 border-l-teal-500 bg-teal-50/20";
   };
 
-  const alreadyHasWinner = nominees.some((n) => n.status === "AWARDED");
-
   return (
     <div className="animate-fadeIn min-h-screen w-full px-6 pt-6">
       {/* HEADER */}
@@ -122,10 +120,10 @@ const AdminDashboard = () => {
         font-bold text-gray-500 text-xs uppercase tracking-wider"
       >
         <div className="col-span-4 text-left">Nominee Details</div>
-        <div className="col-span-2 flex justify-center">Portfolio</div>
-        <div className="col-span-2 flex justify-center">Practise</div>
-        <div className="col-span-2 flex justify-center">Vote Count</div>
-        <div className="col-span-2 flex justify-center">Action</div>
+        <div className="col-span-2 flex justify-center text-center">Portfolio</div>
+        <div className="col-span-2 flex justify-center text-center">Practise</div>
+        <div className="col-span-2 flex justify-center text-center">Vote Count</div>
+        <div className="col-span-2 flex justify-center text-center">Action</div>
       </div>
 
       {/* RESULTS */}
@@ -151,7 +149,7 @@ const AdminDashboard = () => {
             >
 
               {/* NOMINEE */}
-              <div className="col-span-4 flex items-center gap-4 text-left">
+              <div className="col-span-4 flex items-center gap-4 text-left min-w-0">
                 <Avatar
                   sx={{
                     width: 48,
@@ -164,8 +162,8 @@ const AdminDashboard = () => {
                   {nom.nominee_name.charAt(0).toUpperCase()}
                 </Avatar>
 
-                <div>
-                  <Typography className="text-gray-900 font-bold text-lg">
+                <div className="min-w-0 flex-1">
+                  <Typography className="text-gray-900 font-bold text-lg truncate w-full" title={nom.nominee_name}>
                     {nom.nominee_name}
                   </Typography>
                   <Typography variant="caption" className="text-gray-400">
@@ -174,16 +172,16 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Portfolio */}
-              <div className="col-span-2 flex justify-center">
-                <Typography className="text-gray-700 font-medium">
+              {/* PORTFOLIO - Removed truncate, allowed to wrap neatly */}
+              <div className="col-span-2 flex justify-center items-center px-2">
+                <Typography className="text-gray-700 font-medium text-center text-sm leading-tight break-words w-full">
                   {nom.employee_role}
                 </Typography>
               </div>
 
-              {/* DEPARTMENT */}
-              <div className="col-span-2 flex justify-center">
-                <Typography className="text-gray-700 font-medium">
+              {/* DEPARTMENT / PRACTISE - Removed truncate, allowed to wrap neatly */}
+              <div className="col-span-2 flex justify-center items-center px-2">
+                <Typography className="text-gray-700 font-medium text-center text-sm leading-tight break-words w-full">
                   {nom.employee_dept}
                 </Typography>
               </div>
@@ -239,8 +237,6 @@ const AdminDashboard = () => {
                       <UndoIcon sx={{ fontSize: 18, color: "white" }} />
                     </Button>
                   </div>
-                ) : alreadyHasWinner ? (
-                  <div></div>
                 ) : (
                   <Button
                     variant="contained"
@@ -268,4 +264,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-

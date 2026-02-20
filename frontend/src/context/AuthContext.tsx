@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { authAPI } from '../api/auth';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
-import type{ User} from '../types'; // Import the updated type
+import type{ User} from '../types'; 
 
 interface AuthContextType {
     user: User | null;
@@ -24,7 +24,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const fetchUser = async () => {
         try {
             const res = await authAPI.getMe();
-            // Ensure we merge existing structure if needed, but res.data should be the source of truth
             setUser(res.data); 
         } catch (error) {
             console.error("Failed to fetch user", error);
@@ -40,15 +39,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (decoded.exp * 1000 < Date.now()) {
                     logout();
                 } else {
-                    // 1. Initial hydration from token (fast)
                     setUser({
                         user_id: decoded.user_id,
                         username: decoded.username,
-                        email: "", // Token doesn't have email usually
+                        email: "", 
                         role: decoded.role,
                         employee_id: "Loading..." 
                     });
-                    // 2. Fetch full details (slow but accurate)
                     fetchUser();
                 }
             } catch (e) {

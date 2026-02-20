@@ -45,7 +45,6 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
  
     def get_object(self):
-        # Returns the current user so they can PATCH their own data
         return self.request.user      
 
 # 1. Define the Pagination Class (Standard Practice)
@@ -59,8 +58,6 @@ class NominationFilterOptionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Efficiently fetch only unique combinations of these 3 fields
-        # This is very fast even with thousands of users
         data = User.objects.exclude(role='ADMIN').values(
             'employee_dept', 
             'employee_role', 
@@ -113,7 +110,6 @@ class CreateNominationView(APIView):
         if not is_valid:
             return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
  
-        # 🔥 FIX: Exclude BOTH new and old rejection statuses
         # If user has a nomination that is NOT Rejected (in any form), block them.
         existing_noms = Nomination.objects.filter(nominator=request.user).exclude(
             status__in=['COORDINATOR_REJECTED', 'REJECTED']
@@ -138,8 +134,7 @@ class NominationStatusView(APIView):
  
     def get(self, request):
         user = request.user
-       
-        # 🔥 FIX: Ignore BOTH new and old rejection statuses
+
         my_nomination = Nomination.objects.filter(nominator=user).exclude(
             status__in=['COORDINATOR_REJECTED', 'REJECTED']
         ).first()
@@ -182,7 +177,7 @@ class ManageNominationView(APIView):
         # Get the latest non-coordinator-rejected nomination
         return Nomination.objects.filter(nominator=user).exclude(status='COORDINATOR_REJECTED').order_by('-submitted_at').first()
  
-    # ✅ CREATE NOMINATION
+    #  CREATE NOMINATION
     def post(self, request):
         if Nomination.objects.filter(nominator=request.user).exclude(status='COORDINATOR_REJECTED').exists():
             return Response(
@@ -274,10 +269,9 @@ class CoordinatorNominationView(APIView):
         else:
             nominations = query.filter(status__in=["NOMINATION_SUBMITTED", "SUBMITTED"])
 
-        # --- CONSTRUCT RESPONSE DATA ---
         data = []
         for n in nominations:
-            # 🟢 LOGIC: Extract Category from selected_metrics JSON
+            #  LOGIC: Extract Category from selected_metrics JSON
             derived_category = "N/A"
             metrics_data = n.selected_metrics
 
@@ -306,7 +300,7 @@ class CoordinatorNominationView(APIView):
                 "submitted_at": n.submitted_at,
                 "status": n.status,
                 
-                # ✅ SEND DERIVED CATEGORY
+                #  SEND DERIVED CATEGORY
                 "category": derived_category,
                 "selected_metrics": n.selected_metrics
             })
@@ -328,7 +322,7 @@ class CoordinatorNominationView(APIView):
         except Nomination.DoesNotExist:
             return Response({"error": "Nomination not found"}, status=404)
 
-        # === REJECT LOGIC ===
+        #  REJECT LOGIC 
         if action == "REJECT":
             if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"]:
                 new_status = "COORDINATOR_REJECTED"
@@ -339,10 +333,22 @@ class CoordinatorNominationView(APIView):
             else:
                 return Response({"error": f"Cannot reject from current state: {original_nom.status}"}, status=400)
 
+            for nom in all_noms_for_person:
+                send_notification(
+                    user=nom.nominator,
+                    title="Nomination Update: Action Required",
+                    message=(
+                        f"Hi {nom.nominator.first_name or nom.nominator.username}, "
+                        f"your nomination for {nominee.username} has been reviewed and was not selected to move forward at this time. "
+                        f"You are encouraged to submit a new nomination with a more detailed reason, or you may nominate another deserving colleague."
+                    ),
+                    notif_type="INFO"
+                )
+
             all_noms_for_person.update(status=new_status)
             return Response({"message": f"{msg} for {nominee.username}"})
 
-        # === APPROVE LOGIC ===
+        # APPROVE LOGIC 
         elif action == "APPROVE":
             if original_nom.status in ["NOMINATION_SUBMITTED", "SUBMITTED", "Pending"]:
                 new_status = "COORDINATOR_APPROVED"
@@ -362,12 +368,22 @@ class CoordinatorNominationView(APIView):
             else:
                 return Response({"error": f"Cannot approve from current state: {original_nom.status}"}, status=400)
 
+            send_notification(
+                user=nominee,
+                title="Congratulations! Your Nomination was Approved",
+                message=(
+                    f"Hi {nominee.first_name or nominee.username}, "
+                    f"great news! A nomination submitted for you has been reviewed and approved "
+                    f"Keep up the excellent work!"
+                ),
+                notif_type="INFO"
+            )
+
             all_noms_for_person.update(status=new_status)
             return Response({"message": f"{msg} for {nominee.username}"})
 
-        # === UNDO LOGIC ===
+        # UNDO LOGIC 
         elif action == "UNDO":
-            # Simple reversion map
             reversion_map = {
                 "AWARDED": "COMMITTEE_APPROVED",
                 "COMMITTEE_APPROVED": "COORDINATOR_APPROVED",
@@ -412,7 +428,6 @@ class VotingView(APIView):
  
     def get(self, request):
         has_voted = Vote.objects.filter(voter=request.user).exists()
-        # Fetch finalists (Committee Approved)
         finalists = Nomination.objects.filter(status="COMMITTEE_APPROVED")
  
         unique = {}
@@ -462,7 +477,7 @@ class AdminResultsView(APIView):
         for nom in final_results:
             data.append({
                 "id": nom.id,
-                "nominee_name": nom.nominee.username,
+                "nominee_name": f"{nom.nominee.first_name} {nom.nominee.last_name}".strip() or nom.nominee.username,
                 "employee_id": nom.nominee.employee_id,
                 "employee_role": nom.nominee.employee_role or "No Title",
                 "employee_dept": nom.nominee.employee_dept or "General",
@@ -499,7 +514,8 @@ class WinnersView(APIView):
         committee_winners = Nomination.objects.filter(
             status__in=['COMMITTEE_APPROVED', 'AWARDED']
         )  
-        final_winner = Nomination.objects.filter(status='AWARDED').first()  
+
+        final_winners = Nomination.objects.filter(status='AWARDED')  
 
         def dedupe(queryset):
             unique = {}
@@ -510,18 +526,22 @@ class WinnersView(APIView):
 
         coordinator_winners = dedupe(coordinator_winners)
         committee_winners = dedupe(committee_winners)  
+        
+        # ADDED: Deduplicate final winners in case of multiple nominations for same person
+        final_winners = dedupe(final_winners)
 
         def serialize_nom(n):
             if not n: return None
             return {
-                "username": n.nominee.username,
+                "username": f"{n.nominee.first_name} {n.nominee.last_name}".strip() or n.nominee.username,
                 "employee_id": getattr(n.nominee, 'employee_id', n.nominee.id),
                 "employee_role": n.nominee.employee_role,
                 "employee_dept": n.nominee.employee_dept,
             }  
 
         return Response({
-            "final_winner": serialize_nom(final_winner) if final_winner else None,
+            # CHANGED: Return as an array mapped through serialize_nom
+            "final_winners": [serialize_nom(n) for n in final_winners],
             "committee_winners": [serialize_nom(n) for n in committee_winners],
             "coordinator_winners": [serialize_nom(n) for n in coordinator_winners],
         })
@@ -784,9 +804,7 @@ class UserManagementView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # ---------------------------------------------------
         # CASE 1: BULK UPLOAD (File Present)
-        # ---------------------------------------------------
         if 'file' in request.FILES:
             file_obj = request.FILES['file']
             try:
@@ -820,7 +838,7 @@ class UserManagementView(APIView):
                         'practice': get_val(row, 3),
                         'portfolio': get_val(row, 4),
                         'line_manager_name': get_val(row, 5),
-                        'employee_dept': get_val(row, 3), # Map practice to dept
+                        'employee_dept': get_val(row, 3), 
                     }
                     
                     if self.save_user(email, first_name, last_name, user_data):
@@ -838,9 +856,8 @@ class UserManagementView(APIView):
             except Exception as e:
                 return Response({"error": f"Excel Error: {str(e)}"}, status=500)
 
-        # ---------------------------------------------------
         # CASE 2: SINGLE USER (No File, just Data)
-        # ---------------------------------------------------
+
         elif 'email' in request.data:
             data = request.data
             email = data.get('email')
@@ -863,13 +880,10 @@ class UserManagementView(APIView):
             msg = "User created successfully" if is_created else "User updated successfully"
             return Response({"message": msg, "mode": "single"}, status=200)
 
-        # ---------------------------------------------------
         # CASE 3: INVALID REQUEST
-        # ---------------------------------------------------
         else:
             return Response({"error": "Provide either a 'file' or 'email' and 'name'"}, status=400)
 
-    # --- HELPERS ---
     def split_name(self, full_name):
         if not full_name: return "", ""
         parts = full_name.strip().split(' ')
@@ -893,7 +907,7 @@ class UserManagementView(APIView):
                 'username': username,
                 'first_name': first_name,
                 'last_name': last_name,
-                'employee_id': emp_id,  # Will be None (NULL) if empty
+                'employee_id': emp_id,  
                 
                 'contract_type': extra_data.get('contract_type'),
                 'location': extra_data.get('location'),
@@ -917,8 +931,7 @@ class NominationAIAnalysisView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # 🔥 FIX: Look for BOTH 'NOMINATION_SUBMITTED' (New) and 'SUBMITTED' (Old)
-        # This ensures you see data regardless of when it was created.
+        # FIX: Look for BOTH 'NOMINATION_SUBMITTED' 
         nominations = Nomination.objects.filter(
             status__in=["NOMINATION_SUBMITTED", "SUBMITTED"]
         ).select_related('nominee')
@@ -985,7 +998,7 @@ class NominationAIAnalysisView(APIView):
                 "votes": data["count"], 
                 "summary": ai_data.get('summary', "Analysis Pending..."),
                 "sentiment": ai_data.get('sentiment', "Neutral"),
-                "status": "NOMINATION_SUBMITTED" # Standardize output status for frontend
+                "status": "NOMINATION_SUBMITTED" 
             })
 
         return Response(final_response, status=status.HTTP_200_OK)
@@ -997,14 +1010,13 @@ class StarAwardExportView(APIView):
         if request.user.role not in ['ADMIN', 'COORDINATOR']:
             return Response({"error": "Unauthorized"}, status=403)
 
-        # UPDATED: Include ALL relevant statuses so nothing is hidden
         nominations = Nomination.objects.filter(
             status__in=[
-                'NOMINATION_SUBMITTED',   # Optional: Include if you want pending ones too
+                'NOMINATION_SUBMITTED',   
                 'COORDINATOR_APPROVED', 
-                'COORDINATOR_REJECTED',   # <--- Added
+                'COORDINATOR_REJECTED',  
                 'COMMITTEE_APPROVED', 
-                'COMMITTEE_REJECTED',     # <--- Added
+                'COMMITTEE_REJECTED',     
                 'AWARDED'
             ]
         ).select_related('nominator', 'nominee')

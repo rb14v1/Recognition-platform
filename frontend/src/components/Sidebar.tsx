@@ -34,7 +34,6 @@ const Sidebar = ({
     { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
   ];
 
-  // 🚀 COORDINATOR / SUPER USER MENU
   if (userRole === "COORDINATOR") {
     menuItems.push(
       { 
@@ -57,7 +56,6 @@ const Sidebar = ({
         label: "Winners", 
         icon: <EmojiEvents /> 
       },
-      // 👇 The Upload Item
       {
         id: "upload",
         label: "Upload Data",
@@ -71,24 +69,12 @@ const Sidebar = ({
     );
   }
 
-  // ⚡ Handle Clicks
+  // Handle Clicks
   const handleItemClick = (itemId: string) => {
-    // 1. Update the state in ManagementDashboard
     setActiveSection(itemId);
-
-    // 2. Navigation Logic
-    // ⚠️ IMPORTANT: We DO NOT navigate for "upload", "winners", "reports" etc.
-    // because they are now rendered INSIDE ManagementDashboard.
-    // We only navigate if we need to leave the dashboard entirely.
     
     switch (itemId) {
-      // Example: If you have a separate Logout button or external link
-      // case "logout":
-      //   navigate("/login");
-      //   break;
-      
       default:
-        // Stay on the current page and let ManagementDashboard handle the view
         break;
     }
   };

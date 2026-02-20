@@ -138,7 +138,7 @@ const FilterDropdown = ({ label, value, options, onChange }: FilterDropdownProps
 
   return (
     <FormControl size="small" className="min-w-[140px] w-full lg:w-auto">
-      {/* 🔥 INCREASED FONT SIZE: 0.95rem (was 0.85rem) */}
+      {/* INCREASED FONT SIZE: 0.95rem (was 0.85rem) */}
       <InputLabel sx={{ fontSize: '0.95rem', color: '#6b7280', bgcolor: 'white', px: 0.5 }}>{label}</InputLabel>
       <Select
         value={value}

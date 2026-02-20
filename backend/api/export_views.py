@@ -17,22 +17,22 @@ def generate_star_award_excel(nominations):
     # 2. Define EXACT Headers requested
     headers = [
         "Completion time",
-        "Email",                                    # Nominator Email
-        "Name",                                     # Nominator Name
-        "Select an Award Type",                     # Static: "Star Award"
-        "Enter the email address of the colleague you want to nominate", # Nominee Email
-        "In which of the following categories should your nomination be included?", # Category
-        "Why are you nominating this colleague? Describe what your nominee did, the impact of their actions, who was affected, the expected duration of the impact, and any supporting feedback or evidence.", # Reason
+        "Email",                                    
+        "Name",                                     
+        "Select an Award Type",                     
+        "Enter the email address of the colleague you want to nominate", 
+        "In which of the following categories should your nomination be included?",
+        "Why are you nominating this colleague? Describe what your nominee did, the impact of their actions, who was affected, the expected duration of the impact, and any supporting feedback or evidence.",
         "Contract",
         "Location",
         "Country",
         "Practise",
         "Portfolio",
         "Line Manager",
-        "Nomination Name",                          # Static: "Star Award"
-        "Shortlist",                                # Logic: YES/NO
-        "Successful mail back to nominators",       # Logic: YES
-        "Approaval-YES/NO"                          # Logic: YES/NO
+        "Nomination Name",                          
+        "Shortlist",                                
+        "Successful mail back to nominators",       
+        "Approaval-YES/NO"                          
     ]
 
     ws.append(headers)
@@ -49,9 +49,7 @@ def generate_star_award_excel(nominations):
         cell.alignment = center_align
 
     # 4. Process Data
-    for nom in nominations:
-        # --- Logic Extraction ---
-        
+    for nom in nominations:      
         # A. Categories Parsing
         raw_metrics = nom.selected_metrics
         cat_list = []
@@ -104,8 +102,7 @@ def generate_star_award_excel(nominations):
         
         # Append Row
         ws.append(row)
-        
-        # Apply Alignment (Wrap Text) to the newly added row
+
         # This ensures the "-" or text is centered and wrapped
         for cell in ws[ws.max_row]:
             cell.alignment = center_align
@@ -114,15 +111,10 @@ def generate_star_award_excel(nominations):
     for column_cells in ws.columns:
         length = 0
         for cell in column_cells:
-            # We skip the massive header row for width calculation 
-            # so it doesn't force the column to be huge.
             if cell.row == 1:
                 continue 
             if cell.value:
                 length = max(length, len(str(cell.value)))
-        
-        # Set width: Base is length + 2, but HARD CAP at 30 to keep it "mini"
-        # If content is empty/small, default to 15 minimum for readability
         final_width = min(max(length + 2, 15), 30)
         ws.column_dimensions[column_cells[0].column_letter].width = final_width
 

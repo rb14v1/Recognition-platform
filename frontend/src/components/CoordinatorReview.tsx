@@ -15,7 +15,6 @@ import {
     Slide,
     ToggleButton,
     ToggleButtonGroup,
-    Divider
 } from "@mui/material";
 import { CheckCircle, Cancel, History, AccessTime, SmartToy, ViewList, Close as CloseIcon, Category } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
@@ -29,7 +28,6 @@ import DetailPage from "../pages/DetailPage";
 
 const TEAL = "#00A8A8";
 
-// ✅ FIXED TRANSITION COMPONENT
 const Transition = React.forwardRef(function Transition(
   props: any, 
   ref: React.Ref<unknown>,
@@ -43,21 +41,33 @@ const CoordinatorNomination = () => {
     const [nominations, setNominations] = useState<any[]>([]);
     const [openModal, setOpenModal] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'list' | 'copilot'>('list');
+    const [loading, setLoading] = useState(true);
 
     // --- MAIN DATA FETCH ---
     const loadData = async () => {
+        setLoading(true); 
         try {
-            const filter = activeTab === 0 ? "pending" : "history";
+            const filter = activeTab === 0 ? "pending" : "history"; 
             const res = await authAPI.getCoordinatorNominations(filter);
             setNominations(res.data);
         } catch (e) {
             console.error("Failed to load nominations:", e);
+        } finally {
+            setLoading(false); 
         }
     };
 
     useEffect(() => {
         loadData();
     }, [activeTab]); 
+
+    // Synchronously clear data when tab is clicked to prevent the stale data flash
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        if (activeTab === newValue) return;
+        setLoading(true);
+        setNominations([]);
+        setActiveTab(newValue);
+    };
 
     // --- INSTANT UPDATE HANDLER ---
     const handleCopilotActionComplete = (id: number, newStatus: string) => {
@@ -82,21 +92,23 @@ const CoordinatorNomination = () => {
                     status: n.status,
                 };
             }
-            // ✅ UPDATED: Capture Category and Metrics here
             acc[n.nominee_name].list.push({
                 nominator_name: n.nominator_name,
                 reason: n.reason,
                 submitted_at: n.submitted_at,
                 id: n.id,
-                category: n.category,               // <--- ADDED
-                selected_metrics: n.selected_metrics // <--- ADDED
+                category: n.category,               
+                selected_metrics: n.selected_metrics 
             });
             return acc;
         }, {});
     };
 
     const grouped = getGroupedNominations();
-    const groupedList = Object.values(grouped);
+    let groupedList = Object.values(grouped);
+
+    // ✅ REMOVED: The strict activeTab === 1 frontend filter was removed here 
+    // so it properly shows ALL history (Committee Approved, Awarded, etc.)
 
     const handleCopilotClick = (nomineeName: string) => {
         const data = grouped[nomineeName];
@@ -108,18 +120,16 @@ const CoordinatorNomination = () => {
     };
 
     const handleDecision = async (id: number, action: "APPROVE" | "REJECT") => {
+        const toastId = toast.loading("Processing...");
+
         try {
-            const newStatus = action === "APPROVE" ? "COORDINATOR_APPROVED" : "COORDINATOR_REJECTED";
-            
-            // Optimistic Update
-            setNominations(prev => prev.map(n => n.id === id ? { ...n, status: newStatus } : n));
-            
             await authAPI.reviewNomination({ nomination_id: id, action });
-            toast.success(action === "APPROVE" ? "Nomination Shortlisted!" : "Nomination Rejected");
+            toast.success(action === "APPROVE" ? "Nomination Shortlisted!" : "Nomination Rejected", { id: toastId });
             setOpenModal(null);
+            loadData(); 
+            
         } catch (e) {
-            toast.error("Action failed");
-            loadData(); // Revert on failure
+            toast.error("Action failed", { id: toastId });
         }
     };
 
@@ -148,31 +158,26 @@ const CoordinatorNomination = () => {
     const renderMetrics = (metrics: any) => {
         if (!metrics) return "N/A";
         
-        // If it's a string (JSON string), try to parse it
         let data = metrics;
         if (typeof metrics === 'string') {
             try {
                 data = JSON.parse(metrics);
             } catch (e) {
-                return metrics; // Return as is if simple string
+                return metrics; 
             }
         }
 
-        // If it's an array of objects (common pattern)
         if (Array.isArray(data)) {
             return (
                 <ul style={{ margin: "5px 0", paddingLeft: "20px" }}>
                     {data.map((m: any, idx: number) => (
                         <li key={idx}>
-                            {/* Adjust based on your actual metric object structure */}
                             {m.metric || m.category || m.name || JSON.stringify(m)}
                         </li>
                     ))}
                 </ul>
             );
         }
-
-        // Fallback
         return JSON.stringify(data);
     };
 
@@ -227,7 +232,7 @@ const CoordinatorNomination = () => {
                     <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 4 }}>
                         <Tabs
                             value={activeTab}
-                            onChange={(_, v) => setActiveTab(v)}
+                            onChange={handleTabChange}
                             TabIndicatorProps={{ style: { backgroundColor: TEAL } }}
                             sx={{
                                 "& .MuiTab-root": { color: TEAL, fontWeight: "bold" },
@@ -240,7 +245,7 @@ const CoordinatorNomination = () => {
                     </Box>
 
                     <div className="flex flex-col gap-3">
-                        {groupedList.map((grp: any, index: number) => (
+                        {!loading && groupedList.map((grp: any, index: number) => (
                             <Card key={index} sx={{ borderRadius: 3, borderLeft: `6px solid ${TEAL}`, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
                                 <CardContent className="p-4">
                                     <div className="flex items-center w-full">
@@ -264,9 +269,7 @@ const CoordinatorNomination = () => {
                                         </div>
                                         
                                         <div className="flex flex-col justify-center items-end gap-2 w-1/3 pl-4">
-                                            {/* Logic: Show buttons if active tab is Pending AND status is not yet decided */}
-                                            {activeTab === 0 && 
-                                             !["APPROVED", "REJECTED", "COORDINATOR_APPROVED", "COORDINATOR_REJECTED", "COMMITTEE_APPROVED", "COMMITTEE_REJECTED", "AWARDED"].includes(grp.status) ? (
+                                            {activeTab === 0 ? (
                                                 <>
                                                     <Button variant="contained" size="small" sx={{ bgcolor: "green", borderRadius: 2, width: "100px" }} startIcon={<CheckCircle />} onClick={() => handleDecision(grp.id, "APPROVE")}>
                                                         Approve
@@ -277,9 +280,17 @@ const CoordinatorNomination = () => {
                                                 </>
                                             ) : (
                                                 <Chip 
-                                                    label={grp.status ? grp.status.replace("COORDINATOR_", "") : "Processed"} 
+                                                    label={
+                                                        grp.status === "COORDINATOR_APPROVED" || grp.status === "APPROVED" ? "Approved" : 
+                                                        grp.status === "COORDINATOR_REJECTED" || grp.status === "REJECTED" ? "Rejected" : 
+                                                        grp.status === "COMMITTEE_APPROVED" ? "Finalist" :
+                                                        grp.status === "COMMITTEE_REJECTED" ? "Committee Rejected" :
+                                                        grp.status === "AWARDED" ? "Winner" :
+                                                        grp.status
+                                                    } 
                                                     color={grp.status && grp.status.includes("REJECT") ? "error" : "success"} 
                                                     variant="outlined" 
+                                                    sx={{ fontWeight: "bold" }}
                                                 />
                                             )}
                                         </div>
@@ -287,12 +298,20 @@ const CoordinatorNomination = () => {
                                 </CardContent>
                             </Card>
                         ))}
-                        {groupedList.length === 0 && (
-                            <div className="text-center py-20 text-gray-400">
-                                <Typography>No nominations found.</Typography>
-                            </div>
-                        )}
                     </div>
+
+                    {/* LOADING AND EMPTY STATES (Moved OUTSIDE the modal!) */}
+                    {loading && (
+                        <div className="text-center py-20 text-gray-400">
+                            <Typography>Loading data...</Typography>
+                        </div>
+                    )}
+
+                    {!loading && groupedList.length === 0 && (
+                        <div className="text-center py-20 text-gray-400">
+                            <Typography>No records found in {activeTab === 0 ? "Pending Reviews" : "Approval History"}.</Typography>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -301,7 +320,6 @@ const CoordinatorNomination = () => {
                 <Box mt={2}>
                     <DetailPage 
                         onViewDetails={handleCopilotClick} 
-                        // Passes ID + Status back to parent for instant update
                         onActionComplete={handleCopilotActionComplete} 
                     />
                 </Box>
@@ -321,13 +339,13 @@ const CoordinatorNomination = () => {
                             <Typography sx={{ fontWeight: "bold" }}>Nominated by: <span style={{ fontWeight: 400 }}>{item.nominator_name}</span></Typography>
                             <Typography sx={{ mb: 1, color: "#333", mt: 1 }}><b>Reason:</b> {item.reason}</Typography>
 
-                            {/* ✅ NEW: CATEGORY */}
+                            {/* CATEGORY */}
                             <Typography sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Category fontSize="small" sx={{ color: TEAL }} />
                                 <b>Category:</b> {item.category || "N/A"}
                             </Typography>
 
-                            {/* ✅ NEW: METRICS */}
+                            {/* METRICS */}
                             <Box sx={{ mt: 1, bgcolor: "#f9fafb", p: 1, borderRadius: 2 }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", color: "#555" }}>
                                     Key Metrics / Behaviors:
@@ -336,7 +354,7 @@ const CoordinatorNomination = () => {
                                     {renderMetrics(item.selected_metrics)}
                                 </Typography>
                             </Box>
-
+                            
                             <Typography variant="caption" sx={{ color: TEAL, fontStyle: "italic", display: 'block', mt: 1 }}>
                                 Submitted on: {new Date(item.submitted_at).toLocaleString()}
                             </Typography>

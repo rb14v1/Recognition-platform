@@ -40,7 +40,7 @@ const WinnersPage: React.FC = () => {
     loadWinners();
   }, []);
  
-  // ⭐ UPDATED HOVER EFFECT (same as admin dashboard)
+  // UPDATED HOVER EFFECT (same as admin dashboard)
   const WinnerCard = ({ w }: { w: Winner }) => (
     <div
       className="

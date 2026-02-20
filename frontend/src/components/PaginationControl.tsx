@@ -7,7 +7,6 @@ interface PaginationControlProps {
 }
 
 const PaginationControl = ({ count, page, onChange }: PaginationControlProps) => {
-  // Hide if there's only 1 page (or 0)
   if (count <= 1) return null;
 
   return (
@@ -16,7 +15,6 @@ const PaginationControl = ({ count, page, onChange }: PaginationControlProps) =>
         count={count}
         page={page}
         onChange={onChange}
-        // These props ensure the UI doesn't break with 50+ pages
         siblingCount={1} 
         boundaryCount={1}
         showFirstButton
@@ -24,10 +22,10 @@ const PaginationControl = ({ count, page, onChange }: PaginationControlProps) =>
         sx={{
           '& .MuiPaginationItem-root': {
             borderRadius: '8px',
-            color: '#64748b', // Slate-500
+            color: '#64748b', 
             fontWeight: 'bold',
             '&:hover': {
-              backgroundColor: '#f0fdfa', // Teal-50
+              backgroundColor: '#f0fdfa', 
               color: '#00A8A8'
             },
             '&.Mui-selected': {

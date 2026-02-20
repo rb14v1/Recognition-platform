@@ -9,7 +9,7 @@ interface ProfileDialogProps {
   open: boolean;
   onClose: () => void;
   user: User | null;
-  isOwnProfile?: boolean; // 🔥 Pass TRUE if this is the logged-in user
+  isOwnProfile?: boolean; 
 }
 
 const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDialogProps) => {
@@ -17,10 +17,9 @@ const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDia
   const [locationValue, setLocationValue] = useState("");
   const [displayLocation, setDisplayLocation] = useState("");
 
-  // Sync state when the user prop changes
   useEffect(() => {
     if (user) {
-        const loc = user.location || ""; // Handle null/undefined
+        const loc = user.location || ""; 
         setLocationValue(loc);
         setDisplayLocation(loc);
     }
@@ -33,10 +32,8 @@ const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDia
 
   const handleSaveLocation = async () => {
     try {
-        // Call the API to update backend
         await authAPI.updateProfile({ location: locationValue });
-        
-        // Update UI immediately
+
         setDisplayLocation(locationValue);
         setIsEditingLoc(false);
         console.log("Location updated successfully!");
@@ -81,7 +78,7 @@ const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDia
             <InfoItem icon={<Work />} label="Portfolio" value={user.employee_role} />
             <InfoItem icon={<Business />} label="Practise" value={user.employee_dept} />
             
-            {/* 🔥 LOCATION SECTION (UPDATED) */}
+            {/* LOCATION SECTION (UPDATED) */}
             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 relative group">
                 <div className="text-teal-600 mt-0.5"><LocationOn /></div>
                 <div className="flex-1">
@@ -121,7 +118,6 @@ const ProfileDialog = ({ open, onClose, user, isOwnProfile = false }: ProfileDia
                     </IconButton>
                 )}
             </div>
-            {/* ------------------------ */}
 
             <InfoItem icon={<Person />} label="Manager" value={user.manager_name} />
         </div>

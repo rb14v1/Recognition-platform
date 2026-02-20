@@ -3,7 +3,6 @@ import { Card, CardContent, Typography, Button, Chip } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import HowToVoteIcon from "@mui/icons-material/HowToVote";
-import VerifiedIcon from "@mui/icons-material/Verified";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import { authAPI } from "../../api/auth";
 import { useAuth } from "../../context/AuthContext";

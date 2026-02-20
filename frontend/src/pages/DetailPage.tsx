@@ -66,13 +66,11 @@ const DetailPage = ({ onViewDetails, onActionComplete }: DetailPageProps) => {
     }, []);
 
     const handleAction = async (id: number, action: "Approved" | "Rejected") => {
-        setProcessingId(id); // Start Spinner
+        setProcessingId(id); 
 
         try {
             const token = localStorage.getItem('access') || localStorage.getItem('access_token');
             const backendAction = action === "Approved" ? "APPROVE" : "REJECT";
-
-            // 1. WAIT for Server (DB + Mail)
             await axios.post(`${import.meta.env.VITE_API_URL}coordinator/nominations/`, {
                 nomination_id: id, 
                 action: backendAction
@@ -102,7 +100,7 @@ const DetailPage = ({ onViewDetails, onActionComplete }: DetailPageProps) => {
             console.error(err);
             toast.error("Action failed.");
         } finally {
-            setProcessingId(null); // Stop Spinner
+            setProcessingId(null);
         }
     };
 

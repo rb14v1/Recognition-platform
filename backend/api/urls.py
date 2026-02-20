@@ -43,7 +43,7 @@ urlpatterns = [
     path('admin/results/', AdminResultsView.as_view(), name='admin_results'),
     path('admin/winners/', WinnersView.as_view(), name='all_winners'),
     path('admin/manage-users/', UserManagementView.as_view(), name='manage_users'),
-    # Notifications ✅ FIXED
+    # Notifications 
     path('notifications/', NotificationListView.as_view()),
     path('notifications/<int:pk>/read/', NotificationMarkReadView.as_view()),
 

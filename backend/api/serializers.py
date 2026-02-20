@@ -1,8 +1,9 @@
+import json
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
-from .models import Nomination, NominationTimeline,Notification,NOMINATION_CRITERIA
+from .models import Nomination, NominationTimeline, Notification, NOMINATION_CRITERIA
  
 User = get_user_model()
  
@@ -71,6 +72,13 @@ class NotificationSerializer(serializers.ModelSerializer):
  
 # 2. For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
+    nominator_name = serializers.ReadOnlyField(source='nominator.username')
+    nominee_name = serializers.ReadOnlyField(source='nominee.username')
+    nominee_role = serializers.ReadOnlyField(source='nominee.employee_role')
+    nominee_dept = serializers.ReadOnlyField(source='nominee.employee_dept')
+    category = serializers.SerializerMethodField()
+    nominee = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+
     # Expects list: [{"category": "Innovation", "metric": "Idea"}, {"category": "Innovation", "metric": "AI"}]
     selected_metrics = serializers.ListField(
         child=serializers.DictField(),
@@ -82,6 +90,7 @@ class NominationSerializer(serializers.ModelSerializer):
         model = Nomination
         fields = [
             'id',
+            'nominee',          
             'nominator_name',
             'nominee_name',
             'nominee_role',
@@ -92,6 +101,21 @@ class NominationSerializer(serializers.ModelSerializer):
             'category',
             'selected_metrics'
         ]
+        
+    def get_category(self, obj):
+        """Safely extract the category from the selected_metrics array"""
+        try:
+            metrics = obj.selected_metrics
+            if isinstance(metrics, list) and len(metrics) > 0:
+                return metrics[0].get('category', 'N/A')
+            elif isinstance(metrics, str):
+                parsed = json.loads(metrics)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    return parsed[0].get('category', 'N/A')
+        except Exception:
+            pass
+        return 'N/A'
+
     def validate_selected_metrics(self, value):
         """
         Enforce:
@@ -125,8 +149,10 @@ class NominationSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(f"'{met}' is not a valid metric for category '{cat}'")
  
         return value 
+
 class FinalistSerializer(serializers.ModelSerializer):
-    nominee_name = serializers.CharField(source='nominee.username')
+
+    nominee_name = serializers.SerializerMethodField()
     nominee_dept = serializers.CharField(source='nominee.employee_dept')
     nominee_role = serializers.CharField(source='nominee.employee_role')
     nominator_name = serializers.CharField(source='nominator.username')
@@ -134,7 +160,11 @@ class FinalistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Nomination
         fields = ['id', 'nominee_name', 'nominee_dept', 'nominee_role', 'nominator_name', 'reason']
- 
+
+    def get_nominee_name(self, obj):
+        return f"{obj.nominee.first_name} {obj.nominee.last_name}".strip() or obj.nominee.username
+    
+    
 # 2. For Admins (Includes vote_count)
 class AdminVoteResultSerializer(serializers.ModelSerializer):
     nominee_name = serializers.CharField(source='nominee.username')
@@ -148,4 +178,4 @@ class AdminVoteResultSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'nominee_name', 'employee_id', 'employee_role',
             'employee_dept', 'reason', 'status', 'vote_count'
-        ]       
+        ]

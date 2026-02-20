@@ -14,7 +14,6 @@ client = AzureOpenAI(
     api_version=os.getenv("AZURE_OPENAI_API_VERSION")
 )
 
-# Get the deployment name from .env (or fallback to a default if you prefer)
 DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 
 def get_nomination_sentiment(nominations_list):
@@ -22,8 +21,7 @@ def get_nomination_sentiment(nominations_list):
     Analyzes a list of nominations and returns sentiment + summary.
     Expects nominations_list to be a list of dicts: [{'id': 1, 'reason': '...'}, ...]
     """
-    
-    # 🔥 UPDATED PROMPT: Explicitly asks for Category/Metric integration
+
     prompt = f"""
     You are an expert HR Consultant writing executive recognition summaries.
     
@@ -53,7 +51,6 @@ def get_nomination_sentiment(nominations_list):
             max_tokens=1000
         )
 
-        # ... (rest of the file remains the same) ...
         raw_content = response.choices[0].message.content.strip()
         
         if raw_content.startswith("```json"):

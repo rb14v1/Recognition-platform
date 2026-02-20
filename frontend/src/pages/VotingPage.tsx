@@ -22,7 +22,7 @@ const VotingPage = () => {
         try {
             const res = await authAPI.getVotingOptions();
  
-            console.log("FINALISTS:", res.data.finalists); // 🔥 SEND ME THIS
+            console.log("FINALISTS:", res.data.finalists); 
  
             const list = Array.isArray(res.data.finalists) ? res.data.finalists : [];
            
@@ -41,7 +41,7 @@ const VotingPage = () => {
                 // OPTION 4 → use id
                 const key4 = item?.id;
  
-                // 👉 CHOOSE ONE OF THESE KEYS AFTER YOU SEND ME THE DATA
+                //  CHOOSE ONE OF THESE KEYS AFTER YOU SEND ME THE DATA
                 const key = key1 ?? key2 ?? key3 ?? key4;
  
                 if (!uniqueMap[key]) {

@@ -28,14 +28,15 @@ const EmployeeTable = ({
   return (
     <div className="w-full">
  
-      {/* HEADER — SAME AS NOMINATE PAGE */}
+      {/* HEADER */}
       <div className="hidden md:flex items-center gap-4 px-6 py-3 bg-gray-50 border border-gray-200 rounded-t-xl
-                      text-xs font-bold text-gray-500 uppercase tracking-wider">
-        <div className="w-1/4 pl-2">Employee Details</div>
+                      text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
+        <div className="w-1/4 pl-2 text-left">Employee Details</div>
         <div className="flex-1 flex items-center gap-4">
-          <div className="w-20">ID</div>
+          <div className="w-20 text-left">ID</div>
+          {/* Changed fixed widths to flex-1 to distribute space evenly */}
           <div className="flex-1">Portfolio</div>
-          <div className="w-32">Practise</div>
+          <div className="flex-1">Practise</div>
         </div>
         <div className="w-[120px] text-right pr-2">Action</div>
       </div>
@@ -66,8 +67,8 @@ const EmployeeTable = ({
                 {(emp.username || emp.nominee_name)?.charAt(0).toUpperCase()}
               </Avatar>
  
-              <div>
-                <Typography fontWeight="bold" className="text-gray-900 leading-tight">
+              <div className="min-w-0 flex-1">
+                <Typography fontWeight="bold" className="text-gray-900 leading-tight truncate" title={emp.username || emp.nominee_name}>
                   {emp.username || emp.nominee_name}
                 </Typography>
                 <Typography variant="caption" className="md:hidden text-gray-400 font-mono">
@@ -79,15 +80,19 @@ const EmployeeTable = ({
             {/* MIDDLE — ID, ROLE, DEPARTMENT */}
             <div className="flex items-center justify-between w-full md:flex-1 gap-4">
  
-              <div className="w-20 text-sm text-gray-500 font-mono hidden md:block">
+              <div className="w-20 text-sm text-gray-500 font-mono hidden md:block text-left">
                 {emp.employee_id}
               </div>
  
-              <div className="flex-1 text-sm font-medium text-gray-700">
-                {emp.employee_role || emp.nominee_role}
+              {/* Portfolio - Flexible width and wrap text */}
+              <div className="flex-1 flex justify-center items-center px-1">
+                <Typography className="text-gray-700 font-medium text-sm leading-tight break-words text-center w-full">
+                  {emp.employee_role || emp.nominee_role || "N/A"}
+                </Typography>
               </div>
  
-              <div className="w-32">
+              {/* Practise - Flexible width with modified multiline Chip */}
+              <div className="flex-1 flex justify-center items-center px-1">
                 <Chip
                   label={emp.employee_dept || emp.nominee_dept || "General"}
                   size="small"
@@ -95,7 +100,15 @@ const EmployeeTable = ({
                     bgcolor: "#f3f4f6",
                     color: "#4b5563",
                     fontWeight: 600,
-                    borderRadius: "6px"
+                    borderRadius: "8px",
+                    height: "auto", 
+                    py: 0.5,
+                    "& .MuiChip-label": {
+                      display: "block",
+                      whiteSpace: "normal",
+                      lineHeight: 1.2,
+                      textAlign: "center"
+                    }
                   }}
                 />
               </div>
@@ -193,5 +206,3 @@ const EmployeeTable = ({
 };
  
 export default EmployeeTable;
- 
- 

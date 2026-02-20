@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Card,
     CardContent,
@@ -25,38 +25,61 @@ const CommitteeReview = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [nominations, setNominations] = useState<any[]>([]);
     const [openModal, setOpenModal] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadData();
-    }, [activeTab]);
-
-    const loadData = async () => {
+    // 1. Fetch data based on specific tab index
+    const fetchNominations = async (tabIndex: number) => {
         try {
-            // Requests committee-specific pending or overall decision history
-            const filter = activeTab === 0 ? "committee_pending" : "history";
+            // ✅ CORRECTED: "committee_pending" ensures we only get Committee records
+            const filter = tabIndex === 0 ? "committee_pending" : "history";
             const res = await authAPI.getCoordinatorNominations(filter);
             setNominations(res.data);
         } catch (e) {
-            console.error(e);
+            console.error("Failed to load nominations:", e);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    // 2. Fetch on the very first page load
+    useEffect(() => {
+        fetchNominations(activeTab);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // 3. ✅ THE FIX: Bulletproof Tab Switcher (No React lag, no flashing)
+    const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+        if (activeTab === newValue) return; // Do nothing if clicking the same tab
+        
+        setLoading(true);           // 1. Instantly show loading spinner
+        setNominations([]);         // 2. Instantly wipe old data from screen
+        setActiveTab(newValue);     // 3. Move the tab line
+        fetchNominations(newValue); // 4. Fetch the new data
     };
 
     const handleDecision = async (id: number, action: "APPROVE" | "REJECT") => {
+        const toastId = toast.loading("Processing...");
         try {
             await authAPI.reviewNomination({ nomination_id: id, action });
-            toast.success(action === "APPROVE" ? "Promoted to Finalist!" : "Nomination Rejected");
+            toast.success(action === "APPROVE" ? "Promoted to Finalist!" : "Nomination Rejected", { id: toastId });
             setOpenModal(null);
-            loadData();
+            
+            // Instantly refresh the current tab
+            setLoading(true);
+            setNominations([]);
+            fetchNominations(activeTab);
+
         } catch (e: any) {
              if (e.response?.data?.error) {
-                toast.error(e.response.data.error); 
+                toast.error(e.response.data.error, { id: toastId }); 
             } else {
-                toast.error("Action failed");
+                toast.error("Action failed", { id: toastId });
             }
+            setLoading(false);
         }
     };
 
-    // Grouping logic remains consistent with the Coordinator view
+    // Grouping logic
     const grouped = nominations.reduce((acc: any, n: any) => {
         if (!acc[n.nominee_name]) {
             acc[n.nominee_name] = {
@@ -78,7 +101,14 @@ const CommitteeReview = () => {
         return acc;
     }, {});
 
-    const groupedList = Object.values(grouped);
+    let groupedList = Object.values(grouped);
+
+    // Filter out Coordinator-only history so the Committee only sees their own actions
+    if (activeTab === 1) {
+        groupedList = groupedList.filter((grp: any) => 
+            ["COMMITTEE_APPROVED", "COMMITTEE_REJECTED", "AWARDED"].includes(grp.status)
+        );
+    }
 
     return (
         <div className="animate-fadeIn max-w-6xl mx-auto">
@@ -96,7 +126,7 @@ const CommitteeReview = () => {
             <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 4 }}>
                 <Tabs
                     value={activeTab}
-                    onChange={(_, v) => setActiveTab(v)}
+                    onChange={handleTabChange} 
                     TabIndicatorProps={{ style: { backgroundColor: TEAL } }}
                     sx={{
                         "& .MuiTab-root": { color: TEAL, fontWeight: "bold" },
@@ -108,9 +138,9 @@ const CommitteeReview = () => {
                 </Tabs>
             </Box>
 
-            {/* CARDS LIST - Updated to match Coordinator layout */}
+            {/* CARDS LIST */}
             <div className="flex flex-col gap-3">
-                {groupedList.map((grp: any, index: number) => (
+                {!loading && groupedList.map((grp: any, index: number) => (
                     <Card
                         key={index}
                         sx={{
@@ -122,7 +152,7 @@ const CommitteeReview = () => {
                         <CardContent className="p-4">
                             <div className="flex items-center w-full">
                                
-                                {/* Section 1: Profile Info */}
+                                {/* Profile Info */}
                                 <div className="flex items-center gap-3 w-1/3">
                                     <Avatar
                                         sx={{
@@ -160,7 +190,7 @@ const CommitteeReview = () => {
                                         </Button>
                                 </div>
 
-                                {/* Section 3: Committee Actions or Status */}
+                                {/* Committee Actions or Status */}
                                 <div className="flex flex-col justify-center items-end gap-2 w-1/3 pl-4">
                                     {activeTab === 0 ? (
                                         <>
@@ -194,8 +224,14 @@ const CommitteeReview = () => {
                                         </>
                                     ) : (
                                         <Chip
-                                            label={grp.status === "COMMITTEE_APPROVED" ? "Finalist" : grp.status}
-                                            color={grp.status === "REJECTED" ? "error" : "success"}
+                                            label={
+                                                grp.status === "COMMITTEE_APPROVED" ? "Finalist" : 
+                                                grp.status === "AWARDED" ? "Winner" : 
+                                                grp.status === "COMMITTEE_REJECTED" ? "Rejected" : grp.status
+                                            }
+                                            color={
+                                                grp.status === "COMMITTEE_REJECTED" ? "error" : "success"
+                                            }
                                             variant="outlined"
                                             sx={{ fontWeight: "bold" }}
                                         />
@@ -207,7 +243,14 @@ const CommitteeReview = () => {
                 ))}
             </div>
 
-            {groupedList.length === 0 && (
+            {/* LOADING AND EMPTY STATES */}
+            {loading && (
+                <div className="text-center py-20 text-gray-400">
+                    <Typography>Loading data...</Typography>
+                </div>
+            )}
+
+            {!loading && groupedList.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
                     <Typography>No records found in {activeTab === 0 ? "Review Pool" : "Decision History"}.</Typography>
                 </div>

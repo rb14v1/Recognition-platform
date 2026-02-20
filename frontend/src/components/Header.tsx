@@ -70,7 +70,7 @@ function Header() {
 
   if (!user) return null;
 
-  // ✅ SAFE INITIALS
+  // SAFE INITIALS
   const username = user?.username ?? "";
   const initials = username ? username.substring(0, 2).toUpperCase() : "U";
 

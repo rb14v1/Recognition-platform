@@ -36,8 +36,8 @@ def send_notification(user, message, title=None, notif_type="INFO"):
     send_mail(
         subject=title,
         message=message,
-        from_email=settings.EMAIL_HOST_USER,   # MUST match login
+        from_email=settings.EMAIL_HOST_USER,  
         recipient_list=[user.email],
         html_message=html_content,
-        fail_silently=False,                   # 🔥 VERY IMPORTANT
+        fail_silently=False,                   
     )
