@@ -15,7 +15,7 @@ type Winner = {
 const WinnersPage: React.FC = () => {
   const navigate = useNavigate();
  
-  const [finalWinner, setFinalWinner] = useState<Winner | null>(null);
+  const [finalWinners, setFinalWinners] = useState<Winner[]>([]);
   const [committeeWinners, setCommitteeWinners] = useState<Winner[]>([]);
   const [coordinatorWinners, setCoordinatorWinners] = useState<Winner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ const WinnersPage: React.FC = () => {
         const res = await authAPI.getAllWinners();
         const data = res.data;
  
-        setFinalWinner(data.final_winner);
+        setFinalWinners(data.final_winners || []);
         setCommitteeWinners(data.committee_winners || []);
         setCoordinatorWinners(data.coordinator_winners || []);
       } catch (err) {
@@ -40,7 +40,6 @@ const WinnersPage: React.FC = () => {
     loadWinners();
   }, []);
  
-  // UPDATED HOVER EFFECT (same as admin dashboard)
   const WinnerCard = ({ w }: { w: Winner }) => (
     <div
       className="
@@ -91,10 +90,8 @@ const WinnersPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 pt-8 mx-justify">
  
-      {/* HEADER — Back Button (LEFT) + Centered Title */}
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-10">
- 
-        {/* LEFT — Back Button */}
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/dashboard')}
@@ -111,7 +108,6 @@ const WinnersPage: React.FC = () => {
           Back to Dashboard
         </Button>
  
-        {/* CENTER — Title */}
         <Typography
           variant="h4"
           className="font-bold text-gray-900 text-center flex-1"
@@ -119,19 +115,21 @@ const WinnersPage: React.FC = () => {
           Winners Showcase
         </Typography>
  
-        {/* RIGHT — Placeholder */}
         <div className="w-[160px]"></div>
       </div>
  
-      {/* FINAL GLOBAL WINNER */}
+      {/* FINAL GLOBAL WINNERS */}
       <div className="mb-10">
         <Typography variant="h6" className="text-teal-700 font-bold mb-3">
-           Global All-Star Award Winner
+           Global All-Star Award Winner(s)
         </Typography>
  
-        {finalWinner ? (
-          <div className="border-2 border-teal-400 rounded-xl p-5 bg-white shadow">
-            <WinnerCard w={finalWinner} />
+        {finalWinners.length > 0 ? (
+          <div className="space-y-4">
+            {/* ✅ REMOVED: The teal border div wrapper has been removed here */}
+            {finalWinners.map((w, i) => (
+              <WinnerCard w={w} key={i} />
+            ))}
           </div>
         ) : (
           <div className="text-gray-500 italic ml-1">No final winner selected yet.</div>
@@ -176,5 +174,3 @@ const WinnersPage: React.FC = () => {
 };
  
 export default WinnersPage;
- 
- 

@@ -10,12 +10,12 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-light);
-  color: #1e293b; /* Slate-800 for better readability */
+  color: #1e293b; 
   margin: 0;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar for dropdowns */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -30,7 +30,6 @@ body {
   background: #94a3b8;
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

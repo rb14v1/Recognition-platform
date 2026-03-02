@@ -50,7 +50,6 @@ function Login() {
             padding: 4 
         }}>
           <CardContent>
-            {/* Wrapped the content in a <form> and attached onSubmit */}
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 <div className="text-center mb-6">
                    <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Welcome Back</h1>

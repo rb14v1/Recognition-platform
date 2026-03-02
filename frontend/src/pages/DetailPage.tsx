@@ -49,7 +49,7 @@ const DetailPage = ({ onViewDetails, onActionComplete }: DetailPageProps) => {
             });
             
             setRows(response.data);
-            if (response.data.length === 0) toast("No insights found.", { icon: "ℹ️" });
+            if (response.data.length === 0) toast("No insights found.", { icon: "" });
 
         } catch (error: any) {
             console.error("AI Error:", error);

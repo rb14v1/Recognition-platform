@@ -1,22 +1,10 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Outlet } from "react-router-dom"; 
 import Sidebar from "../../components/Sidebar";
-import EmployeeDashboard from "./EmployeeDashboard";
-import CommitteeReview from "../../components/CommitteeReview";
-import CoordinatorNomination from "../../components/CoordinatorReview";
 import { authAPI } from "../../api/auth";
-import AdminDashboard from "./AdminDashboard";
-import WinnersPage from "../WinnersPage";
-import Report from "../Report";
-import UploadDataPage from "../UploadDataPage"; 
 
 const ManagementDashboard = () => {
   const location = useLocation();
-
-  const hideSidebar = location.state?.hideSidebar === true;
-  const initialTab = location.state?.initialTab || "dashboard";
-
-  const [activeSection, setActiveSection] = useState(initialTab);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userRole, setUserRole] = useState("COORDINATOR");
 
@@ -24,20 +12,20 @@ const ManagementDashboard = () => {
     authAPI.getMe().then((res) => setUserRole(res.data.role));
   }, []);
 
-  useEffect(() => {
-    if (location.state?.initialTab) {
-      setActiveSection(location.state.initialTab);
-    }
-  }, [location.state]);
+  const hideSidebar = location.state?.hideSidebar === true;
+
+  // Read the URL to tell the Sidebar which tab should be highlighted green
+  const pathParts = location.pathname.split('/');
+  const currentPath = pathParts[pathParts.length - 1];
+  const activeSection = currentPath === 'management' || currentPath === '' ? 'dashboard' : currentPath;
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc]">
 
-      {/*  SIDEBAR */}
+      {/* SIDEBAR */}
       {!hideSidebar && (
         <Sidebar
           activeSection={activeSection}
-          setActiveSection={setActiveSection}
           isOpen={isSidebarOpen}
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           userRole={userRole}
@@ -50,16 +38,7 @@ const ManagementDashboard = () => {
           hideSidebar ? "ml-0" : isSidebarOpen ? "ml-64" : "ml-20"
         }`}
       >
-        {activeSection === "dashboard" && <EmployeeDashboard />}
-        {activeSection === "coordinator" && <CoordinatorNomination />}
-        {activeSection === "committee" && <CommitteeReview />}
-        {activeSection === "operations" && <AdminDashboard />}
-        {activeSection === "winners" && <WinnersPage />}
-        {activeSection === "reports" && <Report />}
-
-        {/*  ADD THIS SECTION TO KEEP SIDEBAR VISIBLE */}
-        {activeSection === "upload" && <UploadDataPage />}
-
+        <Outlet /> 
       </main>
     </div>
   );

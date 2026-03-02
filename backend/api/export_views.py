@@ -9,12 +9,12 @@ def generate_star_award_excel(nominations):
     Accepts a queryset of Nominations and returns an HttpResponse with the Excel file.
     """
     
-    # 1. Setup Workbook
+    # Setup Workbook
     wb = Workbook()
     ws = wb.active
     ws.title = "Star Award Export"
 
-    # 2. Define EXACT Headers requested
+    # Define EXACT Headers requested
     headers = [
         "Completion time",
         "Email",                                    
@@ -37,7 +37,7 @@ def generate_star_award_excel(nominations):
 
     ws.append(headers)
 
-    # 3. Styling Variables
+    # Styling Variables
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="008080", end_color="008080", fill_type="solid")
     center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -48,7 +48,7 @@ def generate_star_award_excel(nominations):
         cell.fill = header_fill
         cell.alignment = center_align
 
-    # 4. Process Data
+    # Process Data
     for nom in nominations:      
         # A. Categories Parsing
         raw_metrics = nom.selected_metrics
@@ -67,19 +67,19 @@ def generate_star_award_excel(nominations):
             cat_list.append(item.get('category', ''))
         category_str = ", ".join(set(filter(None, cat_list)))
 
-        # B. Helper to avoid empty cells (Returns "-" if empty)
+        # Helper to avoid empty cells (Returns "-" if empty)
         def get_val(obj, attr):
             val = getattr(obj, attr, '')
             return val if val else "-"
 
-        # C. Determine Approval Status (Dynamic YES/NO)
+        # Determine Approval Status (Dynamic YES/NO)
         # YES = Coordinator Approved, Committee Approved, Awarded, or generic Approved
         # NO  = Submitted (pending), Coordinator Rejected, Committee Rejected
         approved_statuses = ['COORDINATOR_APPROVED', 'COMMITTEE_APPROVED', 'AWARDED', 'APPROVED']
         is_approved = nom.status in approved_statuses
         approval_text = "YES" if is_approved else "NO"
 
-        # D. Build Row
+        # Build Row
         row = [
             nom.submitted_at.strftime("%Y-%m-%d %H:%M:%S"), # Completion time
             get_val(nom.nominator, 'email'),                # Nominator Email
@@ -107,7 +107,7 @@ def generate_star_award_excel(nominations):
         for cell in ws[ws.max_row]:
             cell.alignment = center_align
 
-    # 5. Formatting Widths (TIGHTER CAP)
+    # Formatting Widths (TIGHTER CAP)
     for column_cells in ws.columns:
         length = 0
         for cell in column_cells:
@@ -118,7 +118,7 @@ def generate_star_award_excel(nominations):
         final_width = min(max(length + 2, 15), 30)
         ws.column_dimensions[column_cells[0].column_letter].width = final_width
 
-    # 6. Return Response
+    # Return Response
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

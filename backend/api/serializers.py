@@ -33,13 +33,13 @@ class CustomLoginSerializer(TokenObtainPairSerializer):
         username = attrs.get("username")
         password = attrs.get("password")
  
-        # 1. Check if the username even exists
+        # Check if the username even exists
         user_exists = User.objects.filter(username=username).exists()
         if not user_exists:
             # APT REASON #1
             raise AuthenticationFailed({"detail": "This username does not exist."})
  
-        # 2. If username exists, let standard logic check the password
+        # If username exists, let standard logic check the password
         try:
             data = super().validate(attrs)
         except AuthenticationFailed:
@@ -56,9 +56,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'role', 'employee_id', 'employee_dept', 'employee_role', 'location']
        
 class UserNominationListSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = ['id', 'username', 'employee_id', 'employee_dept', 'employee_role', 'role', 'location']
+
+    def get_username(self, obj):
+        full_name = f"{obj.first_name} {obj.last_name}".strip()
+        return full_name if full_name else obj.username
  
 class NominationTimelineSerializer(serializers.ModelSerializer):
     class Meta:
@@ -70,7 +75,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = "__all__"
  
-# 2. For the "Action" of nominating
+# For the "Action" of nominating
 class NominationSerializer(serializers.ModelSerializer):
     nominator_name = serializers.ReadOnlyField(source='nominator.username')
     nominee_name = serializers.ReadOnlyField(source='nominee.username')

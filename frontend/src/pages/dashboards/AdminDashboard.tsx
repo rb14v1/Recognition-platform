@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Typography, Avatar, Button, Chip, CircularProgress } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
 import UndoIcon from "@mui/icons-material/Undo";
-
 import StarIcon from "@mui/icons-material/Star";
-
 import { authAPI } from "../../api/auth";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [nominees, setNominees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -172,14 +167,14 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* PORTFOLIO - Removed truncate, allowed to wrap neatly */}
+              {/* PORTFOLIO */}
               <div className="col-span-2 flex justify-center items-center px-2">
                 <Typography className="text-gray-700 font-medium text-center text-sm leading-tight break-words w-full">
                   {nom.employee_role}
                 </Typography>
               </div>
 
-              {/* DEPARTMENT / PRACTISE - Removed truncate, allowed to wrap neatly */}
+              {/* DEPARTMENT / PRACTISE */}
               <div className="col-span-2 flex justify-center items-center px-2">
                 <Typography className="text-gray-700 font-medium text-center text-sm leading-tight break-words w-full">
                   {nom.employee_dept}

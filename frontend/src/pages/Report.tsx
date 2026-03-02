@@ -34,20 +34,20 @@ import {
   Legend,
 } from "recharts";
 
-/* =================== TYPES =================== */
+/* TYPES */
 interface Summary {
   total_nominations?: number;
   coordinator_approved?: number;
   committee_finalists?: number;
   final_winner?: number;
   total_rejections?: number;
-  Employees_Yet_to_Nominate?: number;
-
+  employees_not_nominated?: number;
 }
 
 interface DepartmentStat {
   department: string;
   count: number;
+  [key: string]: string | number;
 }
 
 interface DailyTrend {
@@ -55,7 +55,7 @@ interface DailyTrend {
   count: number;
 }
 
-/* =================== BRAND =================== */
+/* BRAND */
 const BRAND = {
   primary: "#0F4C81",
   teal: "#00A8A8",
@@ -73,7 +73,7 @@ const CHART_COLORS = [
   "#99F2F2",
 ];
 
-/* =================== COMPONENT =================== */
+/* COMPONENT  */
 const Report: React.FC = () => {
   const navigate = useNavigate();
 
@@ -102,13 +102,33 @@ const Report: React.FC = () => {
     }
   };
 
-  /* =================== EXPORT =================== */
+  const TwoLineXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const departmentName = payload.value;
+    let line1 = departmentName;
+    let line2 = "";
+
+    if (departmentName.length > 12 && departmentName.includes(" ")) {
+        const words = departmentName.split(" ");
+        const middle = Math.ceil(words.length / 2);
+        line1 = words.slice(0, middle).join(" ");
+        line2 = words.slice(middle).join(" ");
+    }
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text textAnchor="middle" fill="#666" fontSize={12}>
+                <tspan x={0} dy="16">{line1}</tspan>
+                {line2 && <tspan x={0} dy="16">{line2}</tspan>}
+            </text>
+        </g>
+    );
+};
+
+  /*  EXPORT */
   const handleExport = async () => {
     try {
-      const res = await authAPI.getAdminReport({
-        responseType: "blob",
-      });
-
+      const res = await authAPI.getAdminReport();
       const blob = new Blob([res.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -156,7 +176,7 @@ const Report: React.FC = () => {
     <div className="min-h-screen bg-gray-50/50 p-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* ================= HEADER ================= */}
+        {/* HEADER */}
         <div className="relative mb-10 flex items-center">
           <Button
             startIcon={<ArrowBack />}
@@ -195,7 +215,7 @@ const Report: React.FC = () => {
         </div>
 
 
-        {/* ================= KPIs ================= */}
+        {/* KPIs */}
         <Box className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10">
           <KpiCard label="Total Nominations" value={summary.total_nominations} />
           <KpiCard label="Coordinator Approved" value={summary.coordinator_approved} />
@@ -205,7 +225,7 @@ const Report: React.FC = () => {
           <KpiCard label="Employees Not Nominated" value={summary.employees_not_nominated} />
         </Box>
 
-        {/* ================= DEPARTMENT ANALYTICS ================= */}
+        {/* DEPARTMENT ANALYTICS */}
         <Section title="Department-wise Analytics">
           <Select size="small" value={department} onChange={(e) => setDepartment(e.target.value)}>
             <MenuItem value="ALL">All Departments</MenuItem>
@@ -219,7 +239,12 @@ const Report: React.FC = () => {
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={filteredDeptStats}>
                   <CartesianGrid stroke={BRAND.grid} strokeDasharray="3 3" />
-                  <XAxis dataKey="department" />
+                  <XAxis 
+                    dataKey="department" 
+                    interval={0} 
+                    height={60} 
+                    tick={<TwoLineXAxisTick />} 
+                />
                   <YAxis allowDecimals={false} />
                   <Tooltip cursor={{ fill: "transparent" }} />
                   <Bar dataKey="count" fill={BRAND.tealLight} radius={[6, 6, 0, 0]} />
@@ -243,7 +268,7 @@ const Report: React.FC = () => {
           </div>
         </Section>
 
-        {/* ================= DAILY TREND ================= */}
+        {/* DAILY TREND */}
         <Section title="Nomination Trends">
           <Box className="flex gap-4 mt-4 mb-4">
             <TextField
@@ -285,7 +310,7 @@ const Report: React.FC = () => {
   );
 };
 
-/* ================= UI HELPERS ================= */
+/* UI HELPERS */
 const KpiCard = ({ label, value }: { label: string; value?: number }) => (
   <Card>
     <CardContent className="text-center">

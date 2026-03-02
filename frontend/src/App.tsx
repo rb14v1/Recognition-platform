@@ -12,11 +12,13 @@ import UploadDataPage from "./pages/UploadDataPage";
 import DetailPage from "./pages/DetailPage";
 import WinnersPage from "./pages/WinnersPage";
 
-// Dashboards
 import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
 import ManagementDashboard from "./pages/dashboards/ManagementDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import Report from "./pages/Report";
+
+import CoordinatorNomination from "./components/CoordinatorReview"; 
+import CommitteeReview from "./components/CommitteeReview"; 
 
 function App() {
   return (
@@ -40,23 +42,24 @@ function App() {
               {/* EMPLOYEE DASHBOARD */}
               <Route path="/dashboard/employee" element={<EmployeeDashboard />} />
 
-              {/* WINNERS PAGE (Admin / Committee / Coordinator can access) */}
-              <Route path="/dashboard/winners" element={<WinnersPage />} />
-
-              {/* MANAGEMENT DASHBOARD */}
-              <Route path="/dashboard/management" element={<ManagementDashboard />} />
-
-              {/* ADMIN DASHBOARD */}
-              <Route path="/dashboard/admin" element={<AdminDashboard />} />
-              {/* ANALYTICS DASHBOARD (Admin / Committee / Coordinator) */}
-              <Route path="/dashboard/report" element={<Report />} />
-              <Route path="/dashboard/upload" element={<UploadDataPage />} />
-
-
-              {/* UTILITIES */}
               <Route path="/dashboard/nominate" element={<Nominate />} />
               <Route path="/dashboard/voting" element={<VotingPage />} />
-              <Route path="/dashboard/detailpage" element={<DetailPage />} />
+              <Route path="/dashboard/detailpage" element={<DetailPage onViewDetails={() => console.log("View details clicked")} />} />
+
+              {/* MANAGEMENT DASHBOARD (Coordinator Layout with Sidebar) */}
+              <Route path="/dashboard/management" element={<ManagementDashboard />}>
+                
+                {/* Child Routes: Rendered inside the <Outlet /> of ManagementDashboard */}
+                <Route index element={<EmployeeDashboard />} /> {/* Default view */}
+                <Route path="dashboard" element={<EmployeeDashboard />} />
+                <Route path="coordinator" element={<CoordinatorNomination />} />
+                <Route path="committee" element={<CommitteeReview />} />
+                <Route path="operations" element={<AdminDashboard />} />
+                <Route path="winners" element={<WinnersPage />} />
+                <Route path="reports" element={<Report />} />
+                <Route path="upload" element={<UploadDataPage />} />
+                
+              </Route>
 
             </Route>
           </Route>
@@ -71,4 +74,3 @@ function App() {
 }
 
 export default App;
-

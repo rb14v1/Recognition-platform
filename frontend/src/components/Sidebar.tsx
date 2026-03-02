@@ -14,7 +14,6 @@ import { useNavigate } from "react-router-dom";
 
 interface SidebarProps {
   activeSection: string;
-  setActiveSection: (section: string) => void;
   isOpen: boolean;
   toggleSidebar: () => void;
   userRole: string;
@@ -22,7 +21,6 @@ interface SidebarProps {
 
 const Sidebar = ({
   activeSection,
-  setActiveSection,
   isOpen,
   toggleSidebar,
   userRole,
@@ -69,13 +67,12 @@ const Sidebar = ({
     );
   }
 
-  // Handle Clicks
+  // Handle Clicks by navigating to the corresponding URL
   const handleItemClick = (itemId: string) => {
-    setActiveSection(itemId);
-    
-    switch (itemId) {
-      default:
-        break;
+    if (itemId === "dashboard") {
+      navigate("/dashboard/management");
+    } else {
+      navigate(`/dashboard/management/${itemId}`);
     }
   };
 

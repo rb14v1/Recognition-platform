@@ -18,7 +18,7 @@ import {
 } from "@mui/icons-material";
 
 const UploadDataPage = () => {
-  // --- STATE ---
+  // STATE 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -37,7 +37,7 @@ const UploadDataPage = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- REUSABLE TEAL FOCUS STYLE ---
+  // REUSABLE TEAL FOCUS STYLE 
   const tealFocusStyle = {
     "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { 
         borderColor: "#0d9488" 
@@ -47,9 +47,8 @@ const UploadDataPage = () => {
     }
   };
 
-  // --- HELPER: GET TOKEN SAFELY ---
+  // HELPER: GET TOKEN SAFELY 
   const getAuthToken = () => {
-    // Check common key names
     const token = localStorage.getItem("access_token") || 
                   localStorage.getItem("access") || 
                   localStorage.getItem("token");
@@ -62,7 +61,7 @@ const UploadDataPage = () => {
     return token;
   };
 
-  // --- HANDLERS ---
+  // HANDLERS 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -91,7 +90,6 @@ const UploadDataPage = () => {
           body: formDataUpload,
         });
 
-        // Handle 401 specifically
         if (response.status === 401) {
             throw new Error("Session Expired. Please Logout and Login again.");
         }
@@ -158,7 +156,7 @@ const UploadDataPage = () => {
   return (
     <Box className="w-full max-w-7xl mx-auto animate-fade-in p-6">
       
-      {/* --- PAGE HEADER --- */}
+      {/* PAGE HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
             <Typography variant="h4" className="font-bold text-gray-800 tracking-tight">
@@ -169,7 +167,7 @@ const UploadDataPage = () => {
             </Typography>
         </div>
 
-        {/* TOP RIGHT: UPLOAD EXCEL BUTTON */}
+        {/* UPLOAD EXCEL BUTTON */}
         <div>
             <input
               type="file"
@@ -200,7 +198,7 @@ const UploadDataPage = () => {
         </div>
       </div>
 
-      {/* --- STATUS MESSAGE --- */}
+      {/* STATUS MESSAGE*/}
       {status.msg && (
         <Alert 
             severity={status.type === "success" ? "success" : "error"} 
@@ -212,7 +210,7 @@ const UploadDataPage = () => {
         </Alert>
       )}
 
-      {/* --- MANUAL ENTRY FORM --- */}
+      {/* MANUAL ENTRY FORM */}
       <Paper className="border border-gray-200 shadow-sm rounded-xl overflow-hidden bg-white mb-6">
         
         {/* Card Header */}
@@ -228,23 +226,23 @@ const UploadDataPage = () => {
             <Grid container spacing={4}>
                 
                 {/* SECTION 1: IDENTITY */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Full Name" name="name" 
                                 value={formData.name} onChange={handleInputChange} 
                                 variant="outlined" required size="small" 
                                 sx={tealFocusStyle}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Work Email" name="email" 
                                 value={formData.email} onChange={handleInputChange} 
                                 variant="outlined" required size="small" 
                                 sx={tealFocusStyle}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Employee ID" name="employee_id" 
                                 value={formData.employee_id} onChange={handleInputChange} 
                                 variant="outlined" placeholder="Auto-gen if empty" size="small" 
@@ -255,9 +253,9 @@ const UploadDataPage = () => {
                 </Grid>
 
                 {/* SECTION 2: JOB DETAILS */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField select fullWidth label="Contract Type" name="contract_type" 
                                 value={formData.contract_type} onChange={handleInputChange} 
                                 size="small" 
@@ -268,14 +266,14 @@ const UploadDataPage = () => {
                                 <MenuItem value="Contract">Contract</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Practice / Dept" name="practice" 
                                 value={formData.practice} onChange={handleInputChange} 
                                 size="small" 
                                 sx={tealFocusStyle}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Portfolio" name="portfolio" 
                                 value={formData.portfolio} onChange={handleInputChange} 
                                 size="small" 
@@ -286,23 +284,23 @@ const UploadDataPage = () => {
                 </Grid>
 
                 {/* SECTION 3: LOCATION & REPORTING */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Location" name="location" 
                                 value={formData.location} onChange={handleInputChange} 
                                 size="small" 
                                 sx={tealFocusStyle}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Country" name="country" 
                                 value={formData.country} onChange={handleInputChange} 
                                 size="small" 
                                 sx={tealFocusStyle}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField fullWidth label="Line Manager" name="line_manager_name" 
                                 value={formData.line_manager_name} onChange={handleInputChange} 
                                 size="small" 
@@ -316,7 +314,7 @@ const UploadDataPage = () => {
         </div>
       </Paper>
 
-      {/* --- SUBMIT BUTTON --- */}
+      {/* SUBMIT BUTTON*/}
       <div className="flex justify-end">
         <Button 
             variant="contained" 

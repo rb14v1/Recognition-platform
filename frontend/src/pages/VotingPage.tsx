@@ -29,19 +29,10 @@ const VotingPage = () => {
             const uniqueMap: any = {};
  
             list.forEach((item: any) => {
-                // OPTION 1 → use nominee.id
                 const key1 = item?.nominee?.id;
- 
-                // OPTION 2 → use nominee_id
                 const key2 = item?.nominee_id;
- 
-                // OPTION 3 → use employee_id
                 const key3 = item?.employee_id;
- 
-                // OPTION 4 → use id
                 const key4 = item?.id;
- 
-                //  CHOOSE ONE OF THESE KEYS AFTER YOU SEND ME THE DATA
                 const key = key1 ?? key2 ?? key3 ?? key4;
  
                 if (!uniqueMap[key]) {

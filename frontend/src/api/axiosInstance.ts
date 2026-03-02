@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL; // http://127.0.0.1:8000/api/
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -9,12 +9,9 @@ const api = axios.create({
   },
 });
 
-// ================================
-// REQUEST INTERCEPTOR
-// ================================
 api.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem("access"); // ✅ CONSISTENT KEY
+    const accessToken = localStorage.getItem("access"); 
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -23,9 +20,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ================================
-// RESPONSE INTERCEPTOR (REFRESH)
-// ================================
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -38,7 +32,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refresh = localStorage.getItem("refresh"); // ✅ FIXED KEY
+        const refresh = localStorage.getItem("refresh"); 
         if (!refresh) throw new Error("No refresh token");
 
         const res = await axios.post(`${BASE_URL}token/refresh/`, {
@@ -47,15 +41,12 @@ api.interceptors.response.use(
 
         const newAccess = res.data.access;
 
-        // Store new access token
         localStorage.setItem("access", newAccess);
 
-        // Retry original request
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
 
       } catch (err) {
-        // Logout on failure
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
         window.location.href = "/";

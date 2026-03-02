@@ -13,14 +13,12 @@ const Dashboard = () => {
         case "EMPLOYEE":
           navigate("/dashboard/employee");
           break;
-          
-        // SHARED: Coordinator & Committee share the management view
         case "COORDINATOR": 
+        
         case "COMMITTEE":
           navigate("/dashboard/management");
           break;
 
-        // SEPARATE: Admin gets their own dashboard
         case "ADMIN": 
           navigate("/dashboard/admin");
           break;

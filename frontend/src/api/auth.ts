@@ -1,9 +1,7 @@
 import api from "./axiosInstance";
 import type { LoginResponse } from "../types";
+//   INTERFACES
 
-/* ================================
-   INTERFACES
-================================ */
 interface RegisterPayload {
     username: string;
     email: string;
@@ -26,10 +24,8 @@ export interface NominationPayload {
     reason: string;
     selected_metrics: { category: string; metric: string }[];
 }
+// HELPERS
 
-/* ================================
-   HELPERS
-================================ */
 const buildQueryParams = (params: Record<string, string | undefined>) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -37,10 +33,8 @@ const buildQueryParams = (params: Record<string, string | undefined>) => {
     });
     return query.toString();
 };
+// API METHODS
 
-/* ================================
-   API METHODS
-================================ */
 export const authAPI = {
     // AUTH
     register: (data: RegisterPayload) => api.post("/register/", data),
@@ -66,7 +60,7 @@ export const authAPI = {
 
     // NOMINATIONS
     getNominationOptions: (filters?: {
-        page?: number;       // 🔥 Added page
+        page?: number;       
         search?: string;
         dept?: string;
         role?: string;
@@ -100,7 +94,7 @@ export const authAPI = {
     // TEAM
     // APPROVALS
     getCoordinatorNominations: (
-        filter: "pending" | "history" = "pending"
+        filter: "pending" | "history" | "committee_pending" = "pending"
     ) => api.get(`/coordinator/nominations/?filter=${filter}`),
 
     reviewNomination: (data: {
@@ -120,12 +114,12 @@ export const authAPI = {
     getTimeline: () => api.get("/admin/timeline/"),
     setTimeline: (data: any) => api.post("/admin/timeline/", data),
     getAllWinners: () => api.get("/admin/winners/"),
-    // ✅ ANALYTICS (DASHBOARD)
+    // ANALYTICS (DASHBOARD)
     getAdminAnalytics: () => api.get("/admin/analytics/"),
 
-    // ✅ REPORT EXPORT (FIXED)
-    getAdminReport: () =>
-        api.get("/admin/report/", { responseType: "blob" }),
-
+    // REPORT EXPORT
+    getAdminReport: () => api.get("/admin/report/", {
+        responseType: "blob",
+    }),
 
 };

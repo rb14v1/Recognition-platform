@@ -31,7 +31,6 @@ function Register() {
       toast.success("Registration successful!", { id: toastId });
       setTimeout(() => navigate("/login"), 1000);
     } catch (err: any) {
-      // Handle Django error format
       const data = err.response?.data;
       const firstError = typeof data === 'object' ? Object.values(data)[0] : "Registration failed";
       const msg = Array.isArray(firstError) ? firstError[0] : String(firstError);

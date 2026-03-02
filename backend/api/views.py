@@ -1,3 +1,4 @@
+import json
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -494,13 +495,14 @@ class AdminResultsView(APIView):
 
         winner_id = request.data.get('nomination_id')
         try:
-            winner = Nomination.objects.get(id=winner_id)
-            winner.status = 'AWARDED'
-            winner.save()
+            winner_nom = Nomination.objects.get(id=winner_id)
+            Nomination.objects.filter(nominee=winner_nom.nominee).update(status='AWARDED')
+            
             return Response({"message": "Winner declared!"})
         except Nomination.DoesNotExist:
             return Response({"error": "Nomination not found"}, status=404)
         
+
 class WinnersView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -514,7 +516,6 @@ class WinnersView(APIView):
         committee_winners = Nomination.objects.filter(
             status__in=['COMMITTEE_APPROVED', 'AWARDED']
         )  
-
         final_winners = Nomination.objects.filter(status='AWARDED')  
 
         def dedupe(queryset):
@@ -526,8 +527,6 @@ class WinnersView(APIView):
 
         coordinator_winners = dedupe(coordinator_winners)
         committee_winners = dedupe(committee_winners)  
-        
-        # ADDED: Deduplicate final winners in case of multiple nominations for same person
         final_winners = dedupe(final_winners)
 
         def serialize_nom(n):
@@ -540,12 +539,11 @@ class WinnersView(APIView):
             }  
 
         return Response({
-            # CHANGED: Return as an array mapped through serialize_nom
-            "final_winners": [serialize_nom(n) for n in final_winners],
+            "final_winners": [serialize_nom(n) for n in final_winners], 
             "committee_winners": [serialize_nom(n) for n in committee_winners],
             "coordinator_winners": [serialize_nom(n) for n in coordinator_winners],
         })
-
+    
 class AdminAnalyticsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -724,79 +722,6 @@ class AdminReportExportView(APIView):
         response["Content-Disposition"] = 'attachment; filename="admin_report.xlsx"'
         wb.save(response)
         return response
-
-# 10. AI ANALYSIS VIEW - UPDATED
-class NominationAIAnalysisView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        # AI looks at SUBMITTED nominations
-        nominations = Nomination.objects.filter(status="NOMINATION_SUBMITTED").select_related('nominee')
-
-        if not nominations.exists():
-            return Response([], status=200)
-
-        grouped_data = {}
-
-        for n in nominations:
-            nominee_id = n.nominee.id
-            raw_data = n.selected_metrics
-            if isinstance(raw_data, str):
-                try:
-                    metrics_list = json.loads(raw_data)
-                except:
-                    metrics_list = []
-            else:
-                metrics_list = raw_data or []
-
-            categories = {item.get('category', 'General') for item in metrics_list}
-            metrics = {item.get('metric', 'Performance') for item in metrics_list}
-            
-            cat_str = ", ".join(categories)
-            met_str = ", ".join(metrics)
-            reason = n.reason or "No specific reason provided."
-
-            if nominee_id not in grouped_data:
-                grouped_data[nominee_id] = {
-                    "first_nomination_id": n.id,
-                    "name": n.nominee.username,
-                    "email": getattr(n.nominee, 'email', 'N/A'),
-                    "details": [],
-                    "count": 0
-                }
-            
-            detail_str = f"Focus: {cat_str} ({met_str}) -> {reason}"
-            grouped_data[nominee_id]["details"].append(detail_str)
-            grouped_data[nominee_id]["count"] += 1
-
-        data_for_ai = []
-        for nominee_id, data in grouped_data.items():
-            combined_text = " | ".join(data["details"])
-            full_prompt_text = f"Candidate: {data['name']}. Received {data['count']} nominations. Inputs: {combined_text}"
-            data_for_ai.append({
-                "id": data["first_nomination_id"], 
-                "reason": full_prompt_text
-            })
-
-        ai_results = get_nomination_sentiment(data_for_ai)
-        ai_lookup = {item['id']: item for item in ai_results}
-        final_response = []
-
-        for nominee_id, data in grouped_data.items():
-            lookup_id = data["first_nomination_id"]
-            ai_data = ai_lookup.get(lookup_id, {})
-
-            final_response.append({
-                "id": lookup_id,
-                "name": data["name"],
-                "email": data["email"],
-                "votes": data["count"], 
-                "summary": ai_data.get('summary', "Analysis Pending..."),
-                "sentiment": ai_data.get('sentiment', "Neutral"),
-                "status": "SUBMITTED"
-            })
-
-        return Response(final_response, status=status.HTTP_200_OK)
     
 class UserManagementView(APIView):
     # Support both File Uploads (Multipart) and JSON (Manual Entry)
@@ -964,7 +889,7 @@ class NominationAIAnalysisView(APIView):
             if nominee_id not in grouped_data:
                 grouped_data[nominee_id] = {
                     "first_nomination_id": n.id,
-                    "name": n.nominee.username,
+                    "name": f"{n.nominee.first_name} {n.nominee.last_name}".strip() or n.nominee.username,
                     "email": getattr(n.nominee, 'email', 'N/A'),
                     "details": [],
                     "count": 0

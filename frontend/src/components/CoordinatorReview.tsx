@@ -12,14 +12,12 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    Slide,
     ToggleButton,
     ToggleButtonGroup,
 } from "@mui/material";
 import { CheckCircle, Cancel, History, AccessTime, SmartToy, ViewList, Close as CloseIcon, Category } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import axios from "axios"; 
 
@@ -28,18 +26,14 @@ import DetailPage from "../pages/DetailPage";
 
 const TEAL = "#00A8A8";
 
-const Transition = React.forwardRef(function Transition(
-  props: any, 
-  ref: React.Ref<unknown>,
-) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
-
 const CoordinatorNomination = () => {
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(0);
     const [nominations, setNominations] = useState<any[]>([]);
-    const [openModal, setOpenModal] = useState<any>(null);
+    
+    // Separate state for the dialog visibility and the data it holds (Identical to Committee)
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedNominee, setSelectedNominee] = useState<any>(null);
+    
     const [viewMode, setViewMode] = useState<'list' | 'copilot'>('list');
     const [loading, setLoading] = useState(true);
 
@@ -62,7 +56,7 @@ const CoordinatorNomination = () => {
     }, [activeTab]); 
 
     // Synchronously clear data when tab is clicked to prevent the stale data flash
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
         if (activeTab === newValue) return;
         setLoading(true);
         setNominations([]);
@@ -76,6 +70,7 @@ const CoordinatorNomination = () => {
                 nom.id === id ? { ...nom, status: newStatus } : nom
             )
         );
+        loadData();
     };
 
     // --- Helper to Group Nominations ---
@@ -107,13 +102,11 @@ const CoordinatorNomination = () => {
     const grouped = getGroupedNominations();
     let groupedList = Object.values(grouped);
 
-    // ✅ REMOVED: The strict activeTab === 1 frontend filter was removed here 
-    // so it properly shows ALL history (Committee Approved, Awarded, etc.)
-
     const handleCopilotClick = (nomineeName: string) => {
         const data = grouped[nomineeName];
         if (data) {
-            setOpenModal(data);
+            setSelectedNominee(data);
+            setIsDialogOpen(true);
         } else {
             toast.error(`Details for ${nomineeName} not found in current list.`);
         }
@@ -125,7 +118,8 @@ const CoordinatorNomination = () => {
         try {
             await authAPI.reviewNomination({ nomination_id: id, action });
             toast.success(action === "APPROVE" ? "Nomination Shortlisted!" : "Nomination Rejected", { id: toastId });
-            setOpenModal(null);
+            
+            setIsDialogOpen(false); // Close dialog smoothly
             loadData(); 
             
         } catch (e) {
@@ -263,7 +257,12 @@ const CoordinatorNomination = () => {
                                             <Typography variant="body2" sx={{ color: "#4b5563", fontWeight: 500 }}>
                                                 {grp.list.length} nomination(s) received
                                             </Typography>
-                                            <Button size="small" variant="contained" onClick={() => setOpenModal(grp)} sx={{ textTransform: "none", bgcolor: "#f3f4f6", color: "#374151", fontWeight: "bold", borderRadius: 4 }}>
+                                            <Button 
+                                                size="small" 
+                                                variant="contained" 
+                                                onClick={() => { setSelectedNominee(grp); setIsDialogOpen(true); }} 
+                                                sx={{ textTransform: "none", bgcolor: "#f3f4f6", color: "#374151", fontWeight: "bold", borderRadius: 4 }}
+                                            >
                                                 View details
                                             </Button>
                                         </div>
@@ -300,7 +299,7 @@ const CoordinatorNomination = () => {
                         ))}
                     </div>
 
-                    {/* LOADING AND EMPTY STATES (Moved OUTSIDE the modal!) */}
+                    {/* LOADING AND EMPTY STATES */}
                     {loading && (
                         <div className="text-center py-20 text-gray-400">
                             <Typography>Loading data...</Typography>
@@ -325,14 +324,19 @@ const CoordinatorNomination = () => {
                 </Box>
             )}
 
-            {/* SHARED DETAIL MODAL */}
-            <Dialog open={!!openModal} onClose={() => setOpenModal(null)} fullWidth maxWidth="sm">
+            {/* SHARED DETAIL MODAL (No Slide Transition, matches Committee exactly) */}
+            <Dialog 
+                open={isDialogOpen} 
+                onClose={() => setIsDialogOpen(false)} 
+                fullWidth 
+                maxWidth="sm" 
+            >
                 <DialogTitle sx={{ display: "flex", justifyContent: "space-between", color: TEAL, borderBottom: `2px solid ${TEAL}` }}>
-                    Nominations for {openModal?.nominee_name}
-                    <CloseIcon onClick={() => setOpenModal(null)} sx={{ cursor: "pointer", color: "#444" }} />
+                    Nominations for {selectedNominee?.nominee_name}
+                    <CloseIcon onClick={() => setIsDialogOpen(false)} sx={{ cursor: "pointer", color: "#444" }} />
                 </DialogTitle>
                 <DialogContent sx={{ py: 2 }}>
-                    {openModal?.list?.map((item: any, i: number) => (
+                    {selectedNominee?.list?.map((item: any, i: number) => (
                         <div key={i} style={{ marginBottom: "18px", paddingBottom: "12px", borderBottom: "1px solid #e5e5e5" }}>
                             
                             {/* Nominator & Reason */}

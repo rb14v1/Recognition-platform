@@ -14,7 +14,7 @@ import {
     DialogContent,
 } from "@mui/material";
 
-import { EmojiEvents, Cancel, History, AccessTime } from "@mui/icons-material";
+import { EmojiEvents, Cancel, History, AccessTime, Category } from "@mui/icons-material";
 import { authAPI } from "../api/auth";
 import toast from "react-hot-toast";
 import CloseIcon from "@mui/icons-material/Close";
@@ -24,13 +24,16 @@ const TEAL = "#00A8A8";
 const CommitteeReview = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [nominations, setNominations] = useState<any[]>([]);
-    const [openModal, setOpenModal] = useState<any>(null);
+    
+    // Separate state for the dialog visibility and the data it holds
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedNominee, setSelectedNominee] = useState<any>(null);
+    
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch data based on specific tab index
     const fetchNominations = async (tabIndex: number) => {
         try {
-            // ✅ CORRECTED: "committee_pending" ensures we only get Committee records
             const filter = tabIndex === 0 ? "committee_pending" : "history";
             const res = await authAPI.getCoordinatorNominations(filter);
             setNominations(res.data);
@@ -44,17 +47,16 @@ const CommitteeReview = () => {
     // 2. Fetch on the very first page load
     useEffect(() => {
         fetchNominations(activeTab);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // 3. ✅ THE FIX: Bulletproof Tab Switcher (No React lag, no flashing)
+    // 3. Bulletproof Tab Switcher 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-        if (activeTab === newValue) return; // Do nothing if clicking the same tab
+        if (activeTab === newValue) return; 
         
-        setLoading(true);           // 1. Instantly show loading spinner
-        setNominations([]);         // 2. Instantly wipe old data from screen
-        setActiveTab(newValue);     // 3. Move the tab line
-        fetchNominations(newValue); // 4. Fetch the new data
+        setLoading(true);           
+        setNominations([]);         
+        setActiveTab(newValue);     
+        fetchNominations(newValue); 
     };
 
     const handleDecision = async (id: number, action: "APPROVE" | "REJECT") => {
@@ -62,9 +64,9 @@ const CommitteeReview = () => {
         try {
             await authAPI.reviewNomination({ nomination_id: id, action });
             toast.success(action === "APPROVE" ? "Promoted to Finalist!" : "Nomination Rejected", { id: toastId });
-            setOpenModal(null);
             
-            // Instantly refresh the current tab
+            setIsDialogOpen(false); // Close dialog smoothly
+
             setLoading(true);
             setNominations([]);
             fetchNominations(activeTab);
@@ -77,6 +79,32 @@ const CommitteeReview = () => {
             }
             setLoading(false);
         }
+    };
+
+    const renderMetrics = (metrics: any) => {
+        if (!metrics) return "N/A";
+        
+        let data = metrics;
+        if (typeof metrics === 'string') {
+            try {
+                data = JSON.parse(metrics);
+            } catch (e) {
+                return metrics; 
+            }
+        }
+
+        if (Array.isArray(data)) {
+            return (
+                <ul style={{ margin: "5px 0", paddingLeft: "20px" }}>
+                    {data.map((m: any, idx: number) => (
+                        <li key={idx}>
+                            {m.metric || m.category || m.name || JSON.stringify(m)}
+                        </li>
+                    ))}
+                </ul>
+            );
+        }
+        return JSON.stringify(data);
     };
 
     // Grouping logic
@@ -97,6 +125,8 @@ const CommitteeReview = () => {
             reason: n.reason,
             submitted_at: n.submitted_at,
             id: n.id,
+            category: n.category,
+            selected_metrics: n.selected_metrics
         });
         return acc;
     }, {});
@@ -184,10 +214,15 @@ const CommitteeReview = () => {
                                 <div className="flex flex-1 flex-row justify-center items-center gap-4 border-l border-r border-gray-100 px-4">
                                     <Typography variant="body2" sx={{ color: "#4b5563", fontWeight: 500 }}>
                                         {grp.list.length} nomination(s) received
-                                        </Typography>
-                                        <Button size="small" variant="contained" onClick={() => setOpenModal(grp)} sx={{ textTransform: "none", bgcolor: "#f3f4f6", color: "#374151", fontWeight: "bold", borderRadius: 4 }}>
-                                            View details
-                                        </Button>
+                                    </Typography>
+                                    <Button 
+                                        size="small" 
+                                        variant="contained" 
+                                        onClick={() => { setSelectedNominee(grp); setIsDialogOpen(true); }} 
+                                        sx={{ textTransform: "none", bgcolor: "#f3f4f6", color: "#374151", fontWeight: "bold", borderRadius: 4 }}
+                                    >
+                                        View details
+                                    </Button>
                                 </div>
 
                                 {/* Committee Actions or Status */}
@@ -256,24 +291,43 @@ const CommitteeReview = () => {
                 </div>
             )}
 
-            {/* View Details Modal */}
-            <Dialog
-                open={!!openModal}
-                onClose={() => setOpenModal(null)}
-                fullWidth
+            <Dialog 
+                open={isDialogOpen} 
+                onClose={() => setIsDialogOpen(false)} 
+                fullWidth 
                 maxWidth="sm"
-                PaperProps={{ sx: { borderRadius: 3 } }}
             >
-                <DialogTitle sx={{ color: "#008080", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
-                    Nominations for {openModal?.nominee_name}
-                    <CloseIcon onClick={() => setOpenModal(null)} sx={{ cursor: "pointer" }} />
+                <DialogTitle sx={{ display: "flex", justifyContent: "space-between", color: TEAL, borderBottom: `2px solid ${TEAL}` }}>
+                    Nominations for {selectedNominee?.nominee_name}
+                    <CloseIcon onClick={() => setIsDialogOpen(false)} sx={{ cursor: "pointer", color: "#444" }} />
                 </DialogTitle>
-                <DialogContent sx={{ pb: 1 }}>
-                    {openModal?.list?.map((item: any, i: number) => (
-                        <div key={i} style={{ marginBottom: "18px", borderBottom: i !== openModal.list.length - 1 ? "1px solid #e5e5e5" : "none", paddingBottom: "12px" }}>
-                            <Typography sx={{ fontWeight: "bold" }}>Nominated by: {item.nominator_name}</Typography>
-                            <Typography sx={{ mb: 1 }}><b>Reason:</b> {item.reason}</Typography>
-                            <Typography variant="caption" sx={{ color: "#008080" }}>{new Date(item.submitted_at).toLocaleString()}</Typography>
+                <DialogContent sx={{ py: 2 }}>
+                    {selectedNominee?.list?.map((item: any, i: number) => (
+                        <div key={i} style={{ marginBottom: "18px", paddingBottom: "12px", borderBottom: "1px solid #e5e5e5" }}>
+                            
+                            {/* Nominator & Reason */}
+                            <Typography sx={{ fontWeight: "bold" }}>Nominated by: <span style={{ fontWeight: 400 }}>{item.nominator_name}</span></Typography>
+                            <Typography sx={{ mb: 1, color: "#333", mt: 1 }}><b>Reason:</b> {item.reason}</Typography>
+
+                            {/* CATEGORY */}
+                            <Typography sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Category fontSize="small" sx={{ color: TEAL }} />
+                                <b>Category:</b> {item.category || "N/A"}
+                            </Typography>
+
+                            {/* METRICS */}
+                            <Box sx={{ mt: 1, bgcolor: "#f9fafb", p: 1, borderRadius: 2 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: "bold", color: "#555" }}>
+                                    Key Metrics / Behaviors:
+                                </Typography>
+                                <Typography variant="body2" component="div" sx={{ color: "#333" }}>
+                                    {renderMetrics(item.selected_metrics)}
+                                </Typography>
+                            </Box>
+                            
+                            <Typography variant="caption" sx={{ color: TEAL, fontStyle: "italic", display: 'block', mt: 1 }}>
+                                Submitted on: {new Date(item.submitted_at).toLocaleString()}
+                            </Typography>
                         </div>
                     ))}
                 </DialogContent>

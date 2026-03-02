@@ -254,15 +254,13 @@ const Nominate = () => {
       setSubmitting(false);
     }
   };
-
-  // UPDATED EMPLOYEE ROW (With strict alignment)
   
   const EmployeeRow = ({ emp, type }: { emp: any; type: "nominate" | "manage" }) => (
     <div 
       className="group flex flex-col md:flex-row items-center px-4 py-3 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-all duration-200"
       style={{ display: 'flex', width: '100%' }}
     >
-      {/* 1. EMPLOYEE DETAILS (25%) */}
+      {/* 1. EMPLOYEE DETAILS */}
       <div className="flex items-center gap-3 mb-2 md:mb-0" style={{ width: '25%' }}>
         <Avatar sx={{ width: 40, height: 40, bgcolor: "#00A8A8", color: "white" }}>
           {(emp.username || emp.nominee_name)?.charAt(0).toUpperCase()}
@@ -277,12 +275,12 @@ const Nominate = () => {
         </div>
       </div>
 
-      {/* 2. ID (10%) */}
+      {/* 2. ID */}
       <div className="text-sm text-gray-500 font-mono hidden md:block" style={{ width: '10%' }}>
         {emp.employee_id || "-"}
       </div>
 
-      {/* 3. PORTFOLIO (30%) - Pushed Right */}
+      {/* 3. PORTFOLIO */}
       <div 
         className="text-sm font-medium text-gray-700 italic hidden md:block"
         style={{ width: '30%', paddingLeft: '4rem' }} // Matches logic from previous table
@@ -290,7 +288,7 @@ const Nominate = () => {
         {emp.employee_role || <span className="text-gray-400">No Title</span>}
       </div>
 
-      {/* 4. PRACTICE (25%) - Aligned Left naturally */}
+      {/* 4. PRACTICE */}
       <div className="w-full md:w-auto" style={{ width: '25%' }}>
         <Chip
           label={emp.employee_dept || "General"}
@@ -304,7 +302,7 @@ const Nominate = () => {
         />
       </div>
 
-      {/* 5. ACTION (10%) */}
+      {/* 5. ACTION */}
       <div className="flex justify-end gap-2 mt-2 md:mt-0" style={{ width: '10%' }}>
         {type === "nominate" ? (
           <Button
@@ -398,7 +396,7 @@ const Nominate = () => {
         ) : (
           <div className="flex flex-col gap-3">
 
-            {/* HEADER - UPDATED ALIGNMENT */}
+            {/* HEADER */}
             <div 
               className="hidden md:flex items-center px-4 py-3 bg-gray-50 border border-gray-200 rounded-t-xl text-xs font-bold text-gray-500 uppercase tracking-wider"
               style={{ display: 'flex', width: '100%' }}
@@ -406,10 +404,10 @@ const Nominate = () => {
               <div style={{ width: '25%', paddingLeft: '8px' }}>Employee Details</div>
               <div style={{ width: '10%' }}>ID</div>
               
-              {/* PORTFOLIO (Renamed from Job Title) - Pushed Right */}
+              {/* PORTFOLIO */}
               <div style={{ width: '30%', paddingLeft: '4rem' }}>Portfolio</div>
               
-              {/* PRACTICE (Renamed from Department) - Aligned Left */}
+              {/* PRACTICE */}
               <div style={{ width: '25%' }}>Practice</div>
               
               <div style={{ width: '10%', textAlign: 'right', paddingRight: '8px' }}>Action</div>
@@ -436,7 +434,7 @@ const Nominate = () => {
         )}
       </div>
 
-      {/* NOMINATION MODAL (Unchanged Logic) */}
+      {/* NOMINATION MODAL */}
       <Dialog
         open={nominateDialogOpen}
         onClose={() => setNominateDialogOpen(false)}
