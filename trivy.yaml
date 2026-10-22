@@ -1,0 +1,24 @@
+# Trivy configuration for recog-plat-acb
+# https://aquasecurity.github.io/trivy/latest/docs/references/configuration/config-file/
+#
+# This file is read automatically when `trivy` is invoked from the repo root.
+# CI must run both targets below and fail on any CRITICAL or HIGH finding.
+
+# Exit with code 1 when vulnerabilities at or above the threshold are found.
+exit-code: 1
+
+severity:
+  - CRITICAL
+  - HIGH
+
+# Ignore unfixed vulnerabilities – pin to a patched version instead of
+# suppressing; only use .trivyignore for formally accepted risks (see SECURITY.md).
+ignore-unfixed: false
+
+scan:
+  # Scan the Python dependency manifest
+  - target: backend/requirements.txt
+
+# Image scanning is performed separately in CI:
+#   trivy image --severity CRITICAL,HIGH <image>:<tag>
+# The base image is python:3.12-slim; keep it up-to-date in backend/Dockerfile.
